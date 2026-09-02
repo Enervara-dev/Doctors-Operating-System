@@ -1,0 +1,11 @@
+export type * from "./api";
+export type * from "./appointment";
+export type * from "./audit";
+export type * from "./clinical-intelligence";
+export type * from "./consultation";
+export type * from "./doctor";
+export type * from "./patient";
+export type * from "./patient-access";
+export type * from "./patient-communication";
+export type * from "./patient-context";
+export type * from "./record";

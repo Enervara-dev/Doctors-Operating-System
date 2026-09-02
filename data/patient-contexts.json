@@ -1,0 +1,672 @@
+[
+  {
+    "patientId": "patient-001",
+    "allergies": [
+      {
+        "id": "alg-001",
+        "substance": "Sulfonamides",
+        "reaction": "Widespread urticarial rash",
+        "severity": "SEVERE",
+        "recordedOn": "2024-08-02"
+      }
+    ],
+    "medicalHistory": [
+      {
+        "id": "mh-001",
+        "category": "CHRONIC_CONDITION",
+        "label": "Hypothyroidism",
+        "detail": "Diagnosed on routine screening; on replacement therapy since diagnosis.",
+        "since": "2022-01-14",
+        "status": "ACTIVE"
+      },
+      {
+        "id": "mh-002",
+        "category": "PAST_DIAGNOSIS",
+        "label": "Iron deficiency anaemia",
+        "detail": "Responded to a three-month oral iron course.",
+        "since": "2024-03-18",
+        "status": "RESOLVED"
+      },
+      {
+        "id": "mh-003",
+        "category": "SURGERY",
+        "label": "Laparoscopic appendicectomy",
+        "detail": "Uneventful recovery.",
+        "since": "2016",
+        "status": "RESOLVED"
+      },
+      {
+        "id": "mh-004",
+        "category": "FAMILY_HISTORY",
+        "label": "Maternal hypothyroidism",
+        "detail": null,
+        "since": null,
+        "status": "ONGOING"
+      },
+      {
+        "id": "mh-005",
+        "category": "LIFESTYLE",
+        "label": "Non-smoker, no alcohol",
+        "detail": "Vegetarian diet; sedentary desk work.",
+        "since": null,
+        "status": "ONGOING"
+      }
+    ],
+    "currentMedications": [
+      {
+        "id": "cm-001",
+        "name": "Levothyroxine",
+        "dosage": "75 mcg",
+        "frequency": "Once daily, before breakfast",
+        "startedOn": "2022-01-20",
+        "indication": "Hypothyroidism",
+        "prescribedBy": "Dr. Meera Iyer"
+      },
+      {
+        "id": "cm-002",
+        "name": "Cholecalciferol",
+        "dosage": "60000 IU",
+        "frequency": "Once weekly",
+        "startedOn": "2026-05-04",
+        "indication": "Vitamin D deficiency",
+        "prescribedBy": "Dr. Meera Iyer"
+      }
+    ],
+    "previousConsultations": [
+      {
+        "id": "pc-001",
+        "date": "2026-06-11",
+        "doctorName": "Dr. Meera Iyer",
+        "specialty": "Internal Medicine",
+        "complaint": "Fatigue and cold intolerance",
+        "assessment": "Suboptimally controlled hypothyroidism",
+        "investigations": ["TSH", "Free T4", "Complete blood count"],
+        "treatment": ["Levothyroxine increased from 50 mcg to 75 mcg"],
+        "outcome": "Symptoms improved; recheck advised in 8 weeks"
+      },
+      {
+        "id": "pc-002",
+        "date": "2026-02-27",
+        "doctorName": "Dr. Meera Iyer",
+        "specialty": "Internal Medicine",
+        "complaint": "Routine review",
+        "assessment": "Stable on current therapy",
+        "investigations": ["TSH"],
+        "treatment": ["Continue levothyroxine 50 mcg"],
+        "outcome": "Stable"
+      },
+      {
+        "id": "pc-003",
+        "date": "2025-09-15",
+        "doctorName": "Dr. Anil Varghese",
+        "specialty": "Obstetrics & Gynaecology",
+        "complaint": "Heavy menstrual bleeding",
+        "assessment": "Anaemia secondary to menorrhagia",
+        "investigations": ["Complete blood count", "Serum ferritin", "Pelvic ultrasound"],
+        "treatment": ["Oral iron", "Tranexamic acid during menses"],
+        "outcome": "Haemoglobin normalised over three months"
+      }
+    ],
+    "relevantHealthInformation": [
+      "Reports poor sleep over the last two weeks.",
+      "Works night shifts twice a week.",
+      "No recent travel outside Karnataka."
+    ]
+  },
+  {
+    "patientId": "patient-002",
+    "allergies": [],
+    "medicalHistory": [
+      {
+        "id": "mh-101",
+        "category": "CHRONIC_CONDITION",
+        "label": "Type 2 diabetes mellitus",
+        "detail": "Fourteen-year history; on triple oral therapy.",
+        "since": "2012-04-02",
+        "status": "ACTIVE"
+      },
+      {
+        "id": "mh-102",
+        "category": "CHRONIC_CONDITION",
+        "label": "Hypertension",
+        "detail": "Controlled on a single agent.",
+        "since": "2014-11-19",
+        "status": "ACTIVE"
+      },
+      {
+        "id": "mh-103",
+        "category": "PAST_DIAGNOSIS",
+        "label": "Diabetic nephropathy",
+        "detail": "Persistent microalbuminuria; eGFR 58 mL/min/1.73m2 in August 2026.",
+        "since": "2023-07-08",
+        "status": "ACTIVE"
+      },
+      {
+        "id": "mh-104",
+        "category": "HOSPITALISATION",
+        "label": "Admitted for diabetic foot cellulitis",
+        "detail": "Five-day admission; intravenous antibiotics; healed without surgery.",
+        "since": "2021-03-11",
+        "status": "RESOLVED"
+      },
+      {
+        "id": "mh-105",
+        "category": "FAMILY_HISTORY",
+        "label": "Father — myocardial infarction at 58",
+        "detail": null,
+        "since": null,
+        "status": "ONGOING"
+      }
+    ],
+    "currentMedications": [
+      {
+        "id": "cm-101",
+        "name": "Metformin",
+        "dosage": "1000 mg",
+        "frequency": "Twice daily after meals",
+        "startedOn": "2012-04-10",
+        "indication": "Type 2 diabetes mellitus",
+        "prescribedBy": "Dr. Meera Iyer"
+      },
+      {
+        "id": "cm-102",
+        "name": "Glimepiride",
+        "dosage": "2 mg",
+        "frequency": "Once daily before breakfast",
+        "startedOn": "2019-06-22",
+        "indication": "Type 2 diabetes mellitus",
+        "prescribedBy": "Dr. Meera Iyer"
+      },
+      {
+        "id": "cm-103",
+        "name": "Telmisartan",
+        "dosage": "40 mg",
+        "frequency": "Once daily",
+        "startedOn": "2014-11-25",
+        "indication": "Hypertension with nephropathy",
+        "prescribedBy": "Dr. Meera Iyer"
+      },
+      {
+        "id": "cm-104",
+        "name": "Atorvastatin",
+        "dosage": "20 mg",
+        "frequency": "Once at night",
+        "startedOn": "2018-02-14",
+        "indication": "Cardiovascular risk reduction",
+        "prescribedBy": "Dr. Meera Iyer"
+      },
+      {
+        "id": "cm-105",
+        "name": "Furosemide",
+        "dosage": "20 mg",
+        "frequency": "Once daily in the morning",
+        "startedOn": "2026-08-05",
+        "indication": "Pedal oedema",
+        "prescribedBy": "Dr. Meera Iyer"
+      }
+    ],
+    "previousConsultations": [
+      {
+        "id": "pc-101",
+        "date": "2026-08-05",
+        "doctorName": "Dr. Meera Iyer",
+        "specialty": "Internal Medicine",
+        "complaint": "Swelling of both ankles",
+        "assessment": "Fluid retention on a background of diabetic nephropathy",
+        "investigations": ["Serum creatinine", "Urine albumin-creatinine ratio", "HbA1c"],
+        "treatment": ["Started furosemide 20 mg daily", "Salt restriction advised"],
+        "outcome": "Partial improvement reported by telephone"
+      },
+      {
+        "id": "pc-102",
+        "date": "2026-05-19",
+        "doctorName": "Dr. Meera Iyer",
+        "specialty": "Internal Medicine",
+        "complaint": "Quarterly diabetes review",
+        "assessment": "Inadequate glycaemic control",
+        "investigations": ["HbA1c", "Lipid profile", "Fundus examination"],
+        "treatment": ["Glimepiride increased to 2 mg"],
+        "outcome": "HbA1c unchanged at next review"
+      },
+      {
+        "id": "pc-103",
+        "date": "2026-01-30",
+        "doctorName": "Dr. Sunita Rao",
+        "specialty": "Nephrology",
+        "complaint": "Referral for declining renal function",
+        "assessment": "Diabetic nephropathy, CKD stage 3a",
+        "investigations": ["Renal ultrasound", "eGFR", "Urine protein"],
+        "treatment": ["Continue telmisartan", "Avoid nephrotoxic agents"],
+        "outcome": "Six-monthly nephrology review advised"
+      }
+    ],
+    "relevantHealthInformation": [
+      "Avoid NSAIDs given reduced renal function.",
+      "Self-monitors fasting glucose three times a week.",
+      "Reports difficulty affording test strips."
+    ]
+  },
+  {
+    "patientId": "patient-005",
+    "allergies": [
+      {
+        "id": "alg-501",
+        "substance": "NSAIDs",
+        "reaction": "Acute kidney injury following diclofenac",
+        "severity": "CRITICAL",
+        "recordedOn": "2023-04-17"
+      },
+      {
+        "id": "alg-502",
+        "substance": "Iodinated contrast",
+        "reaction": "Bronchospasm during CT angiography",
+        "severity": "CRITICAL",
+        "recordedOn": "2024-11-09"
+      }
+    ],
+    "medicalHistory": [
+      {
+        "id": "mh-501",
+        "category": "CHRONIC_CONDITION",
+        "label": "Chronic kidney disease stage 3",
+        "detail": "eGFR trending down over the last twelve months.",
+        "since": "2022-06-01",
+        "status": "ACTIVE"
+      },
+      {
+        "id": "mh-502",
+        "category": "CHRONIC_CONDITION",
+        "label": "Atrial fibrillation",
+        "detail": "Permanent; rate controlled; on anticoagulation.",
+        "since": "2021-10-12",
+        "status": "ACTIVE"
+      },
+      {
+        "id": "mh-503",
+        "category": "CHRONIC_CONDITION",
+        "label": "Osteoarthritis of both knees",
+        "detail": "Limits walking to about 200 metres.",
+        "since": "2018",
+        "status": "ACTIVE"
+      },
+      {
+        "id": "mh-504",
+        "category": "SURGERY",
+        "label": "Right total knee replacement",
+        "detail": null,
+        "since": "2019-11-04",
+        "status": "RESOLVED"
+      },
+      {
+        "id": "mh-505",
+        "category": "HOSPITALISATION",
+        "label": "Admitted with acute kidney injury",
+        "detail": "Precipitated by diclofenac taken for knee pain.",
+        "since": "2023-04-17",
+        "status": "RESOLVED"
+      }
+    ],
+    "currentMedications": [
+      {
+        "id": "cm-501",
+        "name": "Apixaban",
+        "dosage": "2.5 mg",
+        "frequency": "Twice daily",
+        "startedOn": "2021-10-20",
+        "indication": "Stroke prevention in atrial fibrillation",
+        "prescribedBy": "Dr. Meera Iyer"
+      },
+      {
+        "id": "cm-502",
+        "name": "Bisoprolol",
+        "dosage": "2.5 mg",
+        "frequency": "Once daily",
+        "startedOn": "2021-10-20",
+        "indication": "Rate control",
+        "prescribedBy": "Dr. Meera Iyer"
+      },
+      {
+        "id": "cm-503",
+        "name": "Calcium carbonate with vitamin D3",
+        "dosage": "500 mg / 250 IU",
+        "frequency": "Twice daily",
+        "startedOn": "2020-02-11",
+        "indication": "Bone health",
+        "prescribedBy": "Dr. Meera Iyer"
+      },
+      {
+        "id": "cm-504",
+        "name": "Paracetamol",
+        "dosage": "500 mg",
+        "frequency": "As required, maximum three times daily",
+        "startedOn": "2023-05-02",
+        "indication": "Osteoarthritis pain (NSAID-sparing)",
+        "prescribedBy": "Dr. Meera Iyer"
+      },
+      {
+        "id": "cm-505",
+        "name": "Sodium bicarbonate",
+        "dosage": "500 mg",
+        "frequency": "Twice daily",
+        "startedOn": "2025-08-30",
+        "indication": "Metabolic acidosis of chronic kidney disease",
+        "prescribedBy": "Dr. Sunita Rao"
+      },
+      {
+        "id": "cm-506",
+        "name": "Alfacalcidol",
+        "dosage": "0.25 mcg",
+        "frequency": "Once daily",
+        "startedOn": "2025-08-30",
+        "indication": "Renal bone disease",
+        "prescribedBy": "Dr. Sunita Rao"
+      }
+    ],
+    "previousConsultations": [
+      {
+        "id": "pc-501",
+        "date": "2026-08-21",
+        "doctorName": "Dr. Meera Iyer",
+        "specialty": "Internal Medicine",
+        "complaint": "Palpitations and reduced exercise tolerance",
+        "assessment": "Atrial fibrillation with suboptimal rate control",
+        "investigations": ["24-hour Holter monitor", "Renal function panel", "Thyroid function"],
+        "treatment": ["Bisoprolol continued", "Holter arranged"],
+        "outcome": "Awaiting report — reviewed at this visit"
+      },
+      {
+        "id": "pc-502",
+        "date": "2026-04-03",
+        "doctorName": "Dr. Sunita Rao",
+        "specialty": "Nephrology",
+        "complaint": "Six-monthly renal review",
+        "assessment": "CKD stage 3b, stable",
+        "investigations": ["eGFR", "Serum bicarbonate", "Parathyroid hormone"],
+        "treatment": ["Sodium bicarbonate continued", "Alfacalcidol continued"],
+        "outcome": "Stable; avoid all nephrotoxins"
+      }
+    ],
+    "relevantHealthInformation": [
+      "Lives alone; daughter visits twice weekly.",
+      "Two falls in the last six months, neither with injury.",
+      "Contrast imaging must be avoided without prior discussion."
+    ]
+  },
+  {
+    "patientId": "patient-008",
+    "allergies": [
+      {
+        "id": "alg-801",
+        "substance": "Statins",
+        "reaction": "Disabling myalgia on atorvastatin and rosuvastatin",
+        "severity": "MODERATE",
+        "recordedOn": "2024-01-22"
+      }
+    ],
+    "medicalHistory": [
+      {
+        "id": "mh-801",
+        "category": "CHRONIC_CONDITION",
+        "label": "Coronary artery disease",
+        "detail": "Two drug-eluting stents to the left anterior descending artery.",
+        "since": "2023-09-14",
+        "status": "ACTIVE"
+      },
+      {
+        "id": "mh-802",
+        "category": "CHRONIC_CONDITION",
+        "label": "Hypertension",
+        "detail": null,
+        "since": "2017-05-30",
+        "status": "ACTIVE"
+      },
+      {
+        "id": "mh-803",
+        "category": "SURGERY",
+        "label": "Percutaneous coronary intervention",
+        "detail": "Two stents placed following an anterior wall myocardial infarction.",
+        "since": "2023-09-14",
+        "status": "RESOLVED"
+      },
+      {
+        "id": "mh-804",
+        "category": "LIFESTYLE",
+        "label": "Ex-smoker",
+        "detail": "Twenty pack-years; stopped after the 2023 cardiac event.",
+        "since": null,
+        "status": "ONGOING"
+      }
+    ],
+    "currentMedications": [
+      {
+        "id": "cm-801",
+        "name": "Aspirin",
+        "dosage": "75 mg",
+        "frequency": "Once daily",
+        "startedOn": "2023-09-16",
+        "indication": "Secondary prevention",
+        "prescribedBy": "Dr. Rohit Kamath"
+      },
+      {
+        "id": "cm-802",
+        "name": "Clopidogrel",
+        "dosage": "75 mg",
+        "frequency": "Once daily",
+        "startedOn": "2023-09-16",
+        "indication": "Dual antiplatelet therapy post-stent",
+        "prescribedBy": "Dr. Rohit Kamath"
+      },
+      {
+        "id": "cm-803",
+        "name": "Ezetimibe",
+        "dosage": "10 mg",
+        "frequency": "Once daily",
+        "startedOn": "2024-02-05",
+        "indication": "Lipid lowering (statin intolerant)",
+        "prescribedBy": "Dr. Meera Iyer"
+      },
+      {
+        "id": "cm-804",
+        "name": "Ramipril",
+        "dosage": "5 mg",
+        "frequency": "Once daily",
+        "startedOn": "2023-09-16",
+        "indication": "Hypertension and cardiac protection",
+        "prescribedBy": "Dr. Meera Iyer"
+      }
+    ],
+    "previousConsultations": [
+      {
+        "id": "pc-801",
+        "date": "2026-09-01",
+        "doctorName": "Dr. Meera Iyer",
+        "specialty": "Internal Medicine",
+        "complaint": "Chest discomfort on exertion",
+        "assessment": "Atypical chest discomfort; no acute ischaemic change",
+        "investigations": ["12-lead ECG", "Troponin", "Chest radiograph"],
+        "treatment": ["Continue current therapy", "Cardiology review if recurrent"],
+        "outcome": "Symptom-free at follow-up"
+      },
+      {
+        "id": "pc-802",
+        "date": "2026-08-14",
+        "doctorName": "Dr. Rohit Kamath",
+        "specialty": "Cardiology",
+        "complaint": "Annual cardiac review",
+        "assessment": "Stable coronary artery disease",
+        "investigations": ["Echocardiogram", "Lipid profile"],
+        "treatment": ["Dual antiplatelet therapy continued pending surgical review"],
+        "outcome": "Ejection fraction 52 per cent"
+      }
+    ],
+    "relevantHealthInformation": [
+      "Dual antiplatelet therapy must be discussed with cardiology before any surgery.",
+      "Statin rechallenge previously declined by the patient.",
+      "Walks two kilometres most days without symptoms."
+    ]
+  },
+  {
+    "patientId": "patient-011",
+    "allergies": [],
+    "medicalHistory": [
+      {
+        "id": "mh-1101",
+        "category": "CHRONIC_CONDITION",
+        "label": "Chronic obstructive pulmonary disease",
+        "detail": "GOLD group B; two exacerbations in the past year.",
+        "since": "2019-03-08",
+        "status": "ACTIVE"
+      },
+      {
+        "id": "mh-1102",
+        "category": "CHRONIC_CONDITION",
+        "label": "Osteoporosis",
+        "detail": "T-score -2.8 at the femoral neck.",
+        "since": "2024-06-12",
+        "status": "ACTIVE"
+      },
+      {
+        "id": "mh-1103",
+        "category": "HOSPITALISATION",
+        "label": "Admitted with infective exacerbation of COPD",
+        "detail": "Four-day admission; no ventilatory support required.",
+        "since": "2026-01-18",
+        "status": "RESOLVED"
+      },
+      {
+        "id": "mh-1104",
+        "category": "LIFESTYLE",
+        "label": "Ex-smoker",
+        "detail": "Thirty pack-years; stopped in 2019.",
+        "since": null,
+        "status": "ONGOING"
+      }
+    ],
+    "currentMedications": [
+      {
+        "id": "cm-1101",
+        "name": "Tiotropium",
+        "dosage": "18 mcg",
+        "frequency": "One inhalation daily",
+        "startedOn": "2019-03-15",
+        "indication": "COPD maintenance",
+        "prescribedBy": "Dr. Meera Iyer"
+      },
+      {
+        "id": "cm-1102",
+        "name": "Formoterol with budesonide",
+        "dosage": "6/200 mcg",
+        "frequency": "One inhalation twice daily",
+        "startedOn": "2023-11-02",
+        "indication": "COPD maintenance",
+        "prescribedBy": "Dr. Meera Iyer"
+      },
+      {
+        "id": "cm-1103",
+        "name": "Salbutamol",
+        "dosage": "100 mcg",
+        "frequency": "As required",
+        "startedOn": "2019-03-15",
+        "indication": "Rescue therapy",
+        "prescribedBy": "Dr. Meera Iyer"
+      },
+      {
+        "id": "cm-1104",
+        "name": "Alendronate",
+        "dosage": "70 mg",
+        "frequency": "Once weekly",
+        "startedOn": "2024-06-20",
+        "indication": "Osteoporosis",
+        "prescribedBy": "Dr. Meera Iyer"
+      },
+      {
+        "id": "cm-1105",
+        "name": "Cholecalciferol",
+        "dosage": "60000 IU",
+        "frequency": "Once weekly",
+        "startedOn": "2024-06-20",
+        "indication": "Vitamin D deficiency",
+        "prescribedBy": "Dr. Meera Iyer"
+      }
+    ],
+    "previousConsultations": [
+      {
+        "id": "pc-1101",
+        "date": "2026-08-27",
+        "doctorName": "Dr. Meera Iyer",
+        "specialty": "Internal Medicine",
+        "complaint": "Increased breathlessness on climbing stairs",
+        "assessment": "Stable COPD with reduced exercise tolerance",
+        "investigations": ["Spirometry", "Chest radiograph"],
+        "treatment": ["Inhaler technique retrained", "Pulmonary rehabilitation referral"],
+        "outcome": "Awaiting spirometry report"
+      },
+      {
+        "id": "pc-1102",
+        "date": "2026-01-18",
+        "doctorName": "Dr. Kavitha Suresh",
+        "specialty": "Pulmonology",
+        "complaint": "Acute breathlessness with purulent sputum",
+        "assessment": "Infective exacerbation of COPD",
+        "investigations": ["Chest radiograph", "Arterial blood gas", "Sputum culture"],
+        "treatment": ["Oral corticosteroids", "Amoxicillin-clavulanate", "Nebulisation"],
+        "outcome": "Recovered to baseline"
+      }
+    ],
+    "relevantHealthInformation": [
+      "Uses a spacer device with all inhalers.",
+      "Declined influenza vaccination last season.",
+      "Lives on a first floor with no lift."
+    ]
+  },
+  {
+    "patientId": "patient-012",
+    "allergies": [],
+    "medicalHistory": [
+      {
+        "id": "mh-1201",
+        "category": "CHRONIC_CONDITION",
+        "label": "Generalised anxiety disorder",
+        "detail": "Diagnosed after a six-month history of persistent worry and insomnia.",
+        "since": "2026-02-20",
+        "status": "ACTIVE"
+      },
+      {
+        "id": "mh-1202",
+        "category": "LIFESTYLE",
+        "label": "High caffeine intake",
+        "detail": "Reports five to six cups of coffee daily.",
+        "since": null,
+        "status": "ONGOING"
+      }
+    ],
+    "currentMedications": [
+      {
+        "id": "cm-1201",
+        "name": "Escitalopram",
+        "dosage": "10 mg",
+        "frequency": "Once daily",
+        "startedOn": "2026-03-04",
+        "indication": "Generalised anxiety disorder",
+        "prescribedBy": "Dr. Meera Iyer"
+      }
+    ],
+    "previousConsultations": [
+      {
+        "id": "pc-1201",
+        "date": "2026-06-28",
+        "doctorName": "Dr. Meera Iyer",
+        "specialty": "Internal Medicine",
+        "complaint": "Persistent worry and disturbed sleep",
+        "assessment": "Generalised anxiety disorder, partial response",
+        "investigations": ["Thyroid function", "Complete blood count"],
+        "treatment": ["Escitalopram continued", "Sleep hygiene advice"],
+        "outcome": "Partial improvement in sleep"
+      }
+    ],
+    "relevantHealthInformation": [
+      "Prefers written summaries after each consultation.",
+      "Works rotating shifts in customer support."
+    ]
+  }
+]

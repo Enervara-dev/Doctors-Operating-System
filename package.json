@@ -1,26 +1,46 @@
 {
-  "name": "doctor",
+  "name": "enervara-doctor",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "concurrently -n web,api -c cyan,magenta \"npm:dev:web\" \"npm:dev:api\"",
+    "dev:web": "next dev",
+    "dev:api": "tsx watch backend/src/server.ts",
+    "build": "npm run build:api && next build",
+    "build:web": "next build",
+    "build:api": "rimraf backend/dist && tsc -p backend/tsconfig.json",
+    "start": "concurrently -n web,api -c cyan,magenta \"npm:start:web\" \"npm:start:api\"",
+    "start:web": "next start",
+    "start:api": "node backend/dist/backend/src/server.js",
+    "typecheck": "npm run typecheck:web && npm run typecheck:api",
+    "typecheck:web": "next typegen && tsc --noEmit",
+    "typecheck:api": "tsc --noEmit -p backend/tsconfig.json",
     "lint": "eslint"
   },
   "dependencies": {
+    "clsx": "^2.1.1",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "lucide-react": "^1.39.0",
     "next": "16.3.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "tailwind-merge": "^3.6.0",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^10.0.5",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "rimraf": "^6.1.3",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5"
   }
 }

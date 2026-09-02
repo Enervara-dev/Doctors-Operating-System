@@ -1,0 +1,237 @@
+{
+  "_warning": "AI FIXTURE / TEST DATA ONLY. This file contains NO clinical content and NO real or simulated medical advice. Every label is a deliberately synthetic placeholder ('Consideration A', 'Finding 1') whose only purpose is to exercise the Clinical Intelligence UI contract - available, partial and error states - before a real intelligence service exists. It is never returned by the default application flow; it is served only when a request explicitly asks for source=fixture.",
+  "_neverServeByDefault": true,
+
+  "full": {
+    "clinicalConsiderations": [
+      {
+        "id": "fx-con-1",
+        "condition": "Sample consideration A (placeholder)",
+        "relevance": "Placeholder relevance text used to verify layout and truncation.",
+        "rationale": "Placeholder rationale. A real intelligence service would explain here why this consideration was surfaced for this specific patient.",
+        "patientSpecificFactors": [
+          {
+            "id": "fx-ev-1",
+            "kind": "SYMPTOM",
+            "label": "Placeholder symptom reference",
+            "detail": "Cites a symptom from the current case context.",
+            "sourceRef": "caseContext.symptoms[0]"
+          },
+          {
+            "id": "fx-ev-2",
+            "kind": "HISTORY",
+            "label": "Placeholder history reference",
+            "detail": "Cites an item from the patient's medical history.",
+            "sourceRef": "patientContext.medicalHistory[0]"
+          }
+        ],
+        "relevantHistory": [
+          {
+            "id": "fx-ev-3",
+            "kind": "MEDICATION",
+            "label": "Placeholder medication reference",
+            "sourceRef": "patientContext.currentMedications[0]"
+          }
+        ],
+        "missingInformation": [
+          "Placeholder missing data point 1",
+          "Placeholder missing data point 2"
+        ],
+        "importantQuestions": [
+          "Placeholder question the doctor may wish to ask?",
+          "Placeholder second question?"
+        ],
+        "redFlags": ["Placeholder red flag label"]
+      },
+      {
+        "id": "fx-con-2",
+        "condition": "Sample consideration B (placeholder)",
+        "relevance": "Second placeholder entry, deliberately sparse to test partial rendering within a list.",
+        "patientSpecificFactors": []
+      }
+    ],
+
+    "differentialDiagnoses": [
+      {
+        "id": "fx-dx-1",
+        "condition": "Sample differential A (placeholder)",
+        "relevance": "Placeholder relevance statement.",
+        "rationale": "Placeholder justification. The real service will explain its reasoning here.",
+        "supportingEvidence": [
+          {
+            "id": "fx-ev-10",
+            "kind": "SYMPTOM",
+            "label": "Placeholder supporting item 1",
+            "detail": "Detail line for the supporting item.",
+            "sourceRef": "caseContext.symptoms[0]"
+          },
+          {
+            "id": "fx-ev-11",
+            "kind": "FINDING",
+            "label": "Placeholder supporting item 2",
+            "sourceRef": "caseContext.clinicalFindings[0]"
+          }
+        ],
+        "contradictoryEvidence": [
+          {
+            "id": "fx-ev-12",
+            "kind": "HISTORY",
+            "label": "Placeholder contradictory item",
+            "detail": "Detail explaining what argues against this differential.",
+            "sourceRef": "patientContext.medicalHistory[1]"
+          }
+        ],
+        "missingInformation": ["Placeholder missing information for this differential"],
+        "importantQuestions": ["Placeholder differential-specific question?"],
+        "redFlags": ["Placeholder differential red flag"]
+      },
+      {
+        "id": "fx-dx-2",
+        "condition": "Sample differential B (placeholder)",
+        "supportingEvidence": [
+          {
+            "id": "fx-ev-13",
+            "kind": "DEMOGRAPHIC",
+            "label": "Placeholder demographic factor"
+          }
+        ]
+      },
+      {
+        "id": "fx-dx-3",
+        "condition": "Sample differential C (placeholder, minimal payload)"
+      }
+    ],
+
+    "missingInformation": [
+      {
+        "id": "fx-mi-1",
+        "label": "Placeholder missing information item 1",
+        "whyItMatters": "Placeholder explanation of why this would change the picture.",
+        "relatedConsiderationId": "fx-con-1"
+      },
+      {
+        "id": "fx-mi-2",
+        "label": "Placeholder missing information item 2"
+      }
+    ],
+
+    "suggestedQuestions": [
+      {
+        "id": "fx-sq-1",
+        "question": "Placeholder suggested question one?",
+        "rationale": "Placeholder rationale for asking it.",
+        "relatedConsiderationId": "fx-con-1"
+      },
+      {
+        "id": "fx-sq-2",
+        "question": "Placeholder suggested question two?"
+      }
+    ],
+
+    "redFlags": [
+      {
+        "id": "fx-rf-1",
+        "label": "Placeholder critical red flag",
+        "severity": "CRITICAL",
+        "rationale": "Placeholder rationale text.",
+        "action": "Placeholder suggested action for the doctor to consider."
+      },
+      {
+        "id": "fx-rf-2",
+        "label": "Placeholder warning red flag",
+        "severity": "WARNING"
+      }
+    ],
+
+    "investigationMappings": [
+      {
+        "id": "fx-im-1",
+        "considerationId": "fx-con-1",
+        "consideration": "Sample consideration A (placeholder)",
+        "investigations": [
+          {
+            "id": "fx-inv-1",
+            "name": "Placeholder investigation 1",
+            "purpose": "Placeholder purpose statement.",
+            "clinicalQuestion": "Placeholder clinical question this test would answer?",
+            "relatedConsiderationId": "fx-con-1",
+            "relatedConsideration": "Sample consideration A (placeholder)",
+            "source": "AI"
+          },
+          {
+            "id": "fx-inv-2",
+            "name": "Placeholder investigation 2",
+            "purpose": "Placeholder purpose statement.",
+            "clinicalQuestion": "Placeholder clinical question?",
+            "relatedConsiderationId": "fx-con-1",
+            "relatedConsideration": "Sample consideration A (placeholder)",
+            "source": "AI"
+          }
+        ]
+      },
+      {
+        "id": "fx-im-2",
+        "considerationId": "fx-con-2",
+        "consideration": "Sample consideration B (placeholder)",
+        "investigations": [
+          {
+            "id": "fx-inv-3",
+            "name": "Placeholder investigation 3",
+            "purpose": "Placeholder purpose statement.",
+            "clinicalQuestion": "Placeholder clinical question?",
+            "relatedConsiderationId": "fx-con-2",
+            "relatedConsideration": "Sample consideration B (placeholder)",
+            "source": "SYSTEM"
+          }
+        ]
+      }
+    ],
+
+    "medicationConsiderations": [
+      {
+        "id": "fx-mc-1",
+        "topic": "Placeholder medication consideration",
+        "detail": "Placeholder detail text. A real service would describe an interaction, contraindication or monitoring requirement here.",
+        "severity": "WARNING",
+        "relatedMedication": "Placeholder medication name"
+      },
+      {
+        "id": "fx-mc-2",
+        "topic": "Placeholder informational note",
+        "detail": "Placeholder detail text.",
+        "severity": "INFO"
+      }
+    ],
+
+    "evidence": [
+      {
+        "id": "fx-ce-1",
+        "title": "Placeholder reference title",
+        "source": "Placeholder source",
+        "citation": "Placeholder citation string, no real publication."
+      }
+    ]
+  },
+
+  "partial": {
+    "differentialDiagnoses": [
+      {
+        "id": "fx-p-dx-1",
+        "condition": "Sample differential (partial payload placeholder)",
+        "supportingEvidence": [
+          {
+            "id": "fx-p-ev-1",
+            "kind": "SYMPTOM",
+            "label": "Placeholder supporting item"
+          }
+        ]
+      }
+    ],
+    "missingInformation": [
+      {
+        "id": "fx-p-mi-1",
+        "label": "Placeholder missing information item"
+      }
+    ]
+  }
+}

@@ -1,0 +1,314 @@
+[
+  {
+    "appointmentId": "apt-004",
+    "patientId": "patient-001",
+    "chiefComplaint": "Persistent fever and fatigue for six days",
+    "historyOfPresentIllness": "Fever began six days ago, initially low grade and now reaching 38.9 C in the evenings. Associated with marked fatigue, generalised body ache and reduced appetite. No cough, no urinary symptoms, no loose stools. Took paracetamol with temporary relief. Symptoms have not improved despite a course of over-the-counter medication started on day three.",
+    "symptoms": [
+      {
+        "id": "sym-001",
+        "name": "Fever",
+        "duration": "6 days",
+        "severity": "MODERATE",
+        "notes": "Peaks in the evening, settles partially with paracetamol"
+      },
+      {
+        "id": "sym-002",
+        "name": "Fatigue",
+        "duration": "5 days",
+        "severity": "MODERATE",
+        "notes": "Unable to complete a full day of work"
+      },
+      {
+        "id": "sym-003",
+        "name": "Generalised body ache",
+        "duration": "4 days",
+        "severity": "MILD",
+        "notes": null
+      },
+      {
+        "id": "sym-004",
+        "name": "Reduced appetite",
+        "duration": "3 days",
+        "severity": "MILD",
+        "notes": null
+      }
+    ],
+    "symptomTimeline": [
+      {
+        "id": "tl-001",
+        "label": "Day 1",
+        "date": null,
+        "description": "Low-grade fever begins in the evening.",
+        "source": "PATIENT_REPORTED"
+      },
+      {
+        "id": "tl-002",
+        "label": "Day 2",
+        "date": null,
+        "description": "Fatigue develops; patient stops attending work.",
+        "source": "PATIENT_REPORTED"
+      },
+      {
+        "id": "tl-003",
+        "label": "Day 3",
+        "date": null,
+        "description": "Started over-the-counter paracetamol and a multivitamin.",
+        "source": "PATIENT_REPORTED"
+      },
+      {
+        "id": "tl-004",
+        "label": "Day 4",
+        "date": null,
+        "description": "Body ache and reduced appetite reported.",
+        "source": "PATIENT_REPORTED"
+      },
+      {
+        "id": "tl-005",
+        "label": "Day 6",
+        "date": null,
+        "description": "Fever persists at 38.9 C; consultation requested.",
+        "source": "PATIENT_REPORTED"
+      }
+    ]
+  },
+  {
+    "appointmentId": "apt-005",
+    "patientId": "patient-005",
+    "chiefComplaint": "Review of renal function panel and 24-hour Holter",
+    "historyOfPresentIllness": "Attends to review investigations arranged at the last visit. Reports occasional palpitations lasting a few minutes, mostly at rest, with no chest pain or syncope. Breathlessness on climbing one flight of stairs is unchanged. Urine output subjectively normal. No swelling of the legs.",
+    "symptoms": [
+      {
+        "id": "sym-501",
+        "name": "Palpitations",
+        "duration": "3 weeks, intermittent",
+        "severity": "MILD",
+        "notes": "Episodes last two to five minutes, self-terminating"
+      },
+      {
+        "id": "sym-502",
+        "name": "Exertional breathlessness",
+        "duration": "Ongoing, unchanged",
+        "severity": "MODERATE",
+        "notes": "One flight of stairs"
+      }
+    ],
+    "symptomTimeline": [
+      {
+        "id": "tl-501",
+        "label": "3 weeks ago",
+        "date": null,
+        "description": "Palpitations first reported to the practice by telephone.",
+        "source": "RECORD"
+      },
+      {
+        "id": "tl-502",
+        "label": "12 days ago",
+        "date": null,
+        "description": "Holter monitor fitted for 24 hours.",
+        "source": "RECORD"
+      },
+      {
+        "id": "tl-503",
+        "label": "Today",
+        "date": null,
+        "description": "Attends for report review.",
+        "source": "PATIENT_REPORTED"
+      }
+    ]
+  },
+  {
+    "appointmentId": "apt-003",
+    "patientId": "patient-002",
+    "chiefComplaint": "Glycaemic control review, ankle swelling since last visit",
+    "historyOfPresentIllness": "Attends for a diabetes follow-up. Reports that ankle swelling has partially improved since furosemide was started four weeks ago but returns by the end of the day. Fasting glucose readings at home range between 160 and 210 mg/dL. Reports increased thirst and nocturia twice per night. No chest pain or breathlessness.",
+    "symptoms": [
+      {
+        "id": "sym-201",
+        "name": "Bilateral ankle swelling",
+        "duration": "6 weeks",
+        "severity": "MODERATE",
+        "notes": "Worse by evening, partially relieved by elevation"
+      },
+      {
+        "id": "sym-202",
+        "name": "Increased thirst",
+        "duration": "4 weeks",
+        "severity": "MILD",
+        "notes": null
+      },
+      {
+        "id": "sym-203",
+        "name": "Nocturia",
+        "duration": "4 weeks",
+        "severity": "MILD",
+        "notes": "Twice per night"
+      }
+    ],
+    "symptomTimeline": [
+      {
+        "id": "tl-201",
+        "label": "6 weeks ago",
+        "date": null,
+        "description": "Ankle swelling first noticed.",
+        "source": "PATIENT_REPORTED"
+      },
+      {
+        "id": "tl-202",
+        "label": "4 weeks ago",
+        "date": null,
+        "description": "Reviewed in clinic; furosemide 20 mg daily started.",
+        "source": "RECORD"
+      },
+      {
+        "id": "tl-203",
+        "label": "2 weeks ago",
+        "date": null,
+        "description": "Swelling partially improved; thirst and nocturia increase.",
+        "source": "PATIENT_REPORTED"
+      },
+      {
+        "id": "tl-204",
+        "label": "Today",
+        "date": null,
+        "description": "Attends for glycaemic control review.",
+        "source": "PATIENT_REPORTED"
+      }
+    ]
+  },
+  {
+    "appointmentId": "apt-008",
+    "patientId": "patient-008",
+    "chiefComplaint": "Fitness assessment prior to elective cholecystectomy",
+    "historyOfPresentIllness": "Referred by the surgical team for pre-operative assessment before an elective laparoscopic cholecystectomy scheduled in three weeks. Reports two episodes of right upper quadrant pain after fatty meals in the past two months. No jaundice, no fever. Cardiac symptoms are stable; walks two kilometres daily without chest pain.",
+    "symptoms": [
+      {
+        "id": "sym-801",
+        "name": "Right upper quadrant pain",
+        "duration": "2 months, episodic",
+        "severity": "MODERATE",
+        "notes": "Triggered by fatty meals, lasts about an hour"
+      }
+    ],
+    "symptomTimeline": [
+      {
+        "id": "tl-801",
+        "label": "2 months ago",
+        "date": null,
+        "description": "First episode of right upper quadrant pain after a meal.",
+        "source": "PATIENT_REPORTED"
+      },
+      {
+        "id": "tl-802",
+        "label": "5 weeks ago",
+        "date": null,
+        "description": "Ultrasound confirms gallstones; surgical referral made.",
+        "source": "RECORD"
+      },
+      {
+        "id": "tl-803",
+        "label": "Today",
+        "date": null,
+        "description": "Attends for pre-operative fitness assessment.",
+        "source": "PATIENT_REPORTED"
+      }
+    ]
+  },
+  {
+    "appointmentId": "apt-006",
+    "patientId": "patient-003",
+    "chiefComplaint": "Increasing frequency of migraine episodes",
+    "historyOfPresentIllness": "Reports that headache episodes have increased from two per month to six per month over the past three months. Episodes are unilateral, throbbing, lasting six to twelve hours, with nausea and light sensitivity. No aura. Triggers appear to include missed meals and disturbed sleep. Over-the-counter analgesia is now less effective.",
+    "symptoms": [
+      {
+        "id": "sym-301",
+        "name": "Unilateral throbbing headache",
+        "duration": "3 months of increasing frequency",
+        "severity": "SEVERE",
+        "notes": "Six episodes in the last month"
+      },
+      {
+        "id": "sym-302",
+        "name": "Nausea with headache",
+        "duration": "3 months",
+        "severity": "MODERATE",
+        "notes": null
+      },
+      {
+        "id": "sym-303",
+        "name": "Photophobia",
+        "duration": "3 months",
+        "severity": "MODERATE",
+        "notes": null
+      }
+    ],
+    "symptomTimeline": [
+      {
+        "id": "tl-301",
+        "label": "3 months ago",
+        "date": null,
+        "description": "Headache frequency begins to increase.",
+        "source": "PATIENT_REPORTED"
+      },
+      {
+        "id": "tl-302",
+        "label": "6 weeks ago",
+        "date": null,
+        "description": "Started a new role with irregular working hours.",
+        "source": "PATIENT_REPORTED"
+      },
+      {
+        "id": "tl-303",
+        "label": "Last month",
+        "date": null,
+        "description": "Six separate headache episodes recorded in a diary.",
+        "source": "PATIENT_REPORTED"
+      }
+    ]
+  },
+  {
+    "appointmentId": "apt-011",
+    "patientId": "patient-010",
+    "chiefComplaint": "PCOS management, menstrual cycle diary review",
+    "historyOfPresentIllness": "Attends with a three-month menstrual diary. Cycles remain irregular at 38 to 55 days. Reports weight gain of three kilograms over six months and increasing facial hair. No galactorrhoea. Currently trying to conceive for eight months.",
+    "symptoms": [
+      {
+        "id": "sym-1001",
+        "name": "Irregular menstrual cycles",
+        "duration": "Ongoing",
+        "severity": "MODERATE",
+        "notes": "38 to 55 day cycles over the last three months"
+      },
+      {
+        "id": "sym-1002",
+        "name": "Hirsutism",
+        "duration": "6 months, worsening",
+        "severity": "MILD",
+        "notes": null
+      }
+    ],
+    "symptomTimeline": [
+      {
+        "id": "tl-1001",
+        "label": "8 months ago",
+        "date": null,
+        "description": "Began trying to conceive.",
+        "source": "PATIENT_REPORTED"
+      },
+      {
+        "id": "tl-1002",
+        "label": "3 months ago",
+        "date": null,
+        "description": "Started keeping a menstrual diary as advised.",
+        "source": "RECORD"
+      },
+      {
+        "id": "tl-1003",
+        "label": "Today",
+        "date": null,
+        "description": "Attends with completed diary for review.",
+        "source": "PATIENT_REPORTED"
+      }
+    ]
+  }
+]
