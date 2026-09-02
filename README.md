@@ -14,11 +14,18 @@ that the doctor works inside for the whole visit:
 
 ```
 Patient confirmation → Brief → Consultation → Assessment → Investigations
-                     → Diagnosis → Treatment → Follow-up → Summary → Finalize
+                     → Diagnosis → Treatment → Follow-up → Review
 ```
 
-Records/finalisation (Phase 3), real authentication, a database and AI are explicitly
-**not** part of these phases. See [Limitations](#limitations).
+**Phase 3** closes the loop with finalization, immutable records and audit:
+
+```
+Review → Finalization guard → Finalize → Immutable record → Audit trail
+                                       → Patient communication payload
+```
+
+Real authentication, a database and AI are explicitly **not** part of any phase.
+See [Limitations](#limitations).
 
 ---
 
@@ -84,6 +91,19 @@ still opens correctly — the service builds a demographics-only context.
 Opening the same patient and appointment again **resumes** the existing consultation
 rather than creating a duplicate. Once finalized, opening them starts a fresh record.
 
+### Test data for records and audit
+
+Two finalized records are seeded so the archive is not empty before you finalize
+anything:
+
+| Record | Patient | Consultation | Assessment |
+| ------ | ------- | ------------ | ---------- |
+| `C-1018` | Devika Anand | Chronic Care Review | Chronic obstructive pulmonary disease, stable |
+| `C-1021` | Rajesh Menon | Follow-up | Fluid retention on a background of diabetic nephropathy |
+
+Each carries its own audit history (10 and 11 events). Their patient-facing payloads are
+projected on demand, so the boundary can be inspected without finalizing anything.
+
 ### Previewing clinical intelligence states
 
 No intelligence service exists, so the panel is `UNAVAILABLE` by default. The
@@ -125,17 +145,20 @@ components/
 ├─ dashboard/     GreetingHeader, StatCard, DashboardStats, DashboardView
 ├─ appointments/  AppointmentCard, AppointmentSection, AppointmentsView
 ├─ patients/      Access method cards, code/link forms, PatientConfirmation
-└─ consultation/  ConsultationWorkspace (the command centre shell)
-   ├─ ConsultationHeader, AllergyBanner, StepNav, StepProgress, StepFooter
-   ├─ context/       PatientContextPanel
-   ├─ intelligence/  ClinicalIntelligencePanel + the AI card contract
-   └─ steps/         The eight step screens and their sub-editors
+├─ consultation/  ConsultationWorkspace (the command centre shell)
+│  ├─ ConsultationHeader, AllergyBanner, StepNav, StepProgress, StepFooter
+│  ├─ context/       PatientContextPanel
+│  ├─ intelligence/  ClinicalIntelligencePanel + the AI card contract
+│  └─ steps/         The eight step screens, editors and the review checklist
+└─ records/       RecordsIndex, RecordDetail, RecordDocument,
+                  AuditTimeline, PatientCommunicationPreview
 
 features/         Per-domain API clients and hooks (the only callers of lib/api)
 │                 auth · appointments · patients · patient-access
-│                 consultations · clinical-intelligence
-stores/           Zustand: auth, appointment, patient, ui,
-│                 consultation, patient-context, clinical-intelligence
+│                 consultations · clinical-intelligence · records
+stores/           Zustand: auth, appointment, patient, ui, consultation,
+│                 patient-context, clinical-intelligence, record, audit,
+│                 patient-communication
 lib/
 ├─ api/           fetch client, endpoint map, failure normalisation
 ├─ constants/     Navigation, consultation steps, status → label/tone maps
@@ -147,7 +170,8 @@ data/             Mock JSON fixtures (the future database)
 backend/src/
 ├─ routes/        Express routers
 ├─ controllers/   Request/response translation only
-├─ services/      Business rules, state machine, validation, latency simulation
+├─ services/      Business rules, state machine, finalization transaction,
+│                 validation, audit writes, latency simulation
 ├─ repositories/  The seam a real database will replace
 ├─ mock/          Fixture loading and date rebasing
 ├─ middleware/    Auth, error handler, 404, request logging
@@ -163,9 +187,31 @@ Component → features/*.api.ts → lib/api/client → (Next rewrite) → Expres
 ```
 
 No component imports mock JSON, calls the HTTP client directly, or contains business
-rules. Replacing `data/*.json` with PostgreSQL means rewriting only
-`backend/src/repositories/*` — services, controllers, the API contract and the entire
-frontend are unaffected.
+rules.
+
+### Repository isolation
+
+Every repository is an `async` module exposing intent-shaped methods —
+`findById`, `create`, `save`, `append`, `listByDoctorId` — and nothing above it knows
+where the data lives. No JSON-specific assumption escapes the repository layer: services
+never read a file, never index an array by position, and never rely on load order.
+
+| Repository | Backed by | Notes |
+| ---------- | --------- | ----- |
+| `consultation.repository` | In-memory map, JSON seed | Session records; lost on restart |
+| `consultation-record.repository` | In-memory map, JSON seed | Write-once; no update path exists |
+| `audit.repository` | In-memory array, JSON seed | Append-only; no update or delete |
+| `patient-communication.repository` | In-memory map | Payload generated at finalization |
+| `access-grant.repository` | In-memory map | Keeps authorization server-authoritative |
+| `patient`, `patient-context`, `appointment`, `doctor`, `case-intake` | JSON fixtures | Read-only |
+
+Swapping in PostgreSQL means rewriting `backend/src/repositories/*` and nothing else:
+
+```
+Service → JSON repository        Service → PostgreSQL repository
+```
+
+Services, controllers, the API contract and the entire frontend are unaffected.
 
 ---
 
@@ -210,14 +256,136 @@ active step without the shell knowing anything about its form. The header report
 ### Consultation state machine
 
 ```
-NOT_STARTED → ACTIVE ⇄ DRAFT ⇄ READY_FOR_REVIEW → FINALIZED
+NOT_STARTED ──▶ ACTIVE ◀──▶ DRAFT ◀──▶ READY_FOR_REVIEW ──▶ FINALIZED
 ```
 
+| From | May move to |
+| ---- | ----------- |
+| `NOT_STARTED` | `ACTIVE` |
+| `ACTIVE` | `ACTIVE`, `DRAFT`, `READY_FOR_REVIEW` |
+| `DRAFT` | `DRAFT`, `ACTIVE`, `READY_FOR_REVIEW` |
+| `READY_FOR_REVIEW` | `READY_FOR_REVIEW`, `DRAFT`, `ACTIVE`, `FINALIZED` |
+| `FINALIZED` | nothing — terminal |
+
 Transitions are validated server-side; an invalid one returns
-`409 INVALID_STATE_TRANSITION`. `FINALIZED` is terminal: every mutating endpoint runs
-through a guard that returns `409 CONSULTATION_FINALIZED`, and the UI switches to
-read-only. Finalizing requires at least one doctor-recorded assessment — a consultation
-can never be closed on suggestions alone. Record amendment is Phase 3.
+`409 INVALID_STATE_TRANSITION`. Two behaviours matter:
+
+- **Editing after review returns to draft.** Every content mutation runs through
+  `touchContent`, which moves `READY_FOR_REVIEW` back to `DRAFT`. The doctor has to
+  re-declare readiness, so review always covers what is actually recorded.
+- **`FINALIZED` is terminal.** Every mutating endpoint runs through a guard that returns
+  `409 CONSULTATION_FINALIZED`, and the UI removes its editing controls entirely rather
+  than disabling them. Amendment is modelled (see [Record model](#record-model)) but the
+  workflow is not built, so no misleading Edit action is offered.
+
+### Finalization
+
+Finalization is a controlled service operation, not a controller-level update:
+
+```
+POST /api/consultations/:id/finalize
+  → authenticate doctor
+  → validate consultation state
+  → validate required data (the finalization guard)
+  → snapshot an immutable ConsultationRecord
+  → generate the patient communication payload
+  → mark the consultation FINALIZED and link its record
+  → write RECORD_CREATED and CONSULTATION_FINALIZED audit events
+```
+
+The guard is server-authoritative — the review screen renders its issues but never
+decides them. It checks that the patient and doctor exist, that the consultation carries
+a valid authorization snapshot, that the workflow has started, and that at least one
+doctor-recorded assessment exists. A consultation can never be closed on suggestions
+alone. Failures return `422 CONSULTATION_NOT_READY` with a structured `issues` array.
+
+The operation is **idempotent**: a repeat call returns the existing record with
+`alreadyFinalized: true`, and creates neither a second record nor duplicate audit events.
+
+### Record model
+
+```ts
+interface ConsultationRecord {
+  id, consultationId, reference
+  patientId, patientName, doctorId, doctorName
+  authorization: AuthorizationSnapshot | null   // how access was granted
+  consultationType, consultationDateTime, finalizedAt
+
+  patientContext: PatientContextSnapshot        // copied, not referenced
+  consultationContext: ConsultationContextSnapshot
+  clinicalFindings: ClinicalFinding[]
+
+  aiRecommendations: AiRecommendationSnapshot | null   // what was shown
+  differentialReviews: DifferentialReview[]            // what the doctor did with it
+
+  finalAssessment: DoctorAssessment             // what the doctor decided
+  investigations, medications, treatmentPlan, followUpPlan, additionalNotes
+
+  status: "DRAFT" | "FINALIZED" | "AMENDED"
+  version: number
+  amendedFromRecordId: string | null
+  supersededByRecordId: string | null
+}
+```
+
+**Snapshot semantics.** The record copies the patient context and case narrative at
+finalization rather than pointing at mutable state, so it stays historically meaningful
+after the patient's live context changes. Records are written once and never mutated.
+
+**Amendment architecture.** Version fields and repository contracts exist so a correction
+can create version *n+1* pointing back at the record it supersedes, leaving the original
+untouched. The amendment workflow itself is not implemented, and the UI does not pretend
+otherwise.
+
+### Audit model
+
+```ts
+interface AuditEvent {
+  id, entityType, entityId, consultationId, action
+  actorType: "DOCTOR" | "SYSTEM" | "AI"
+  actorId, actorName, timestamp
+  summary: string          // plain-language line, composed where the change happens
+  previousValue?, newValue?, metadata?
+}
+```
+
+Events are appended by the service layer at the moment a change is applied — never by a
+controller and never from a client claim. The log is append-only: there is no update or
+delete path. Tracked actions cover the whole workflow, from `CONSULTATION_CREATED`
+through `DIFFERENTIAL_REVIEWED`, `DIAGNOSIS_SELECTED`, the investigation and medication
+lifecycles, `CONSULTATION_READY_FOR_REVIEW`, `RECORD_CREATED` and
+`CONSULTATION_FINALIZED`.
+
+Audit writes never fail a clinical operation: a failure is logged and swallowed rather
+than losing the doctor's work.
+
+### Patient communication boundary
+
+```
+ConsultationRecord                    PatientCommunicationPayload
+(internal clinical/legal record)  ──▶ (doctor-approved projection)
+```
+
+The payload is built by **whitelisting fields one by one** in
+`patient-communication.service.ts` — the record is never serialised and filtered
+afterwards, because that approach leaks whatever is added later.
+
+| Crosses into the patient app | Never crosses |
+| ---------------------------- | ------------- |
+| Doctor-approved assessment (condition, certainty, additional conditions) | AI differentials, considerations and reasoning |
+| Investigations: name, purpose, patient instructions, urgency | The clinical question behind a test |
+| Medications: name, dosage, frequency, duration, route, instructions | Differential reviews and dispositions |
+| Treatment advice and non-pharmacological measures | Consultation notes and assessment reasoning |
+| Follow-up: date, interval, reason, what to bring, what to monitor, when to seek help | Clinical findings and examination detail |
+| Reminders derived from the doctor's own dates | Patient context snapshot, allergies, history |
+|  | Authorization snapshots and audit metadata |
+|  | The medication-review note (written for the next clinician) |
+
+The API contract suite asserts each exclusion against the serialised payload, so a field
+added to the record cannot silently reach the patient.
+
+Opening the preview transmits nothing. There is no patient-application integration in
+any phase of this build.
 
 ---
 
@@ -318,8 +486,9 @@ Concretely:
 | `/consultations/[id]/diagnosis`                | Step 5 — diagnosis                                     |
 | `/consultations/[id]/treatment`                | Step 6 — medication & treatment                        |
 | `/consultations/[id]/follow-up`                | Step 7 — follow-up                                     |
-| `/consultations/[id]/summary`                  | Step 8 — summary and finalize                          |
-| `/records`                                     | Phase 3 placeholder                                    |
+| `/consultations/[id]/summary`                  | Step 8 — review, readiness checklist and finalize      |
+| `/records`                                     | Archive of finalized records, with search and filters  |
+| `/records/[recordId]`                          | Immutable record viewer: record, audit history, patient preview |
 
 ### API
 
@@ -352,8 +521,19 @@ All consultation and patient routes require `Authorization: Bearer <token>`.
 | DELETE | `/api/consultations/:id/medications/:medicationId`       | Remove medication                    |
 | POST   | `/api/consultations/:id/follow-up`                       | Follow-up plan                       |
 | POST   | `/api/consultations/:id/finalize`                        | Close the record                     |
-| GET    | `/api/consultations/:id/summary`                         | `ConsultationSummary`                |
+| GET    | `/api/consultations/:id/summary`                         | `ConsultationSummary` + readiness    |
+| GET    | `/api/consultations/:id/record`                          | `ConsultationRecord`                 |
+| GET    | `/api/consultations/:id/audit`                           | `AuditEvent[]`                       |
 | GET    | `/api/consultations/:id/clinical-intelligence`           | `ClinicalIntelligenceEnvelope`       |
+| GET    | `/api/records`                                           | `ConsultationRecordSummary[]` (filterable) |
+| GET    | `/api/records/:id`                                       | `ConsultationRecord`                 |
+| GET    | `/api/records/:id/audit`                                 | `AuditEvent[]`                       |
+| GET    | `/api/records/:id/patient-communication`                 | `PatientCommunicationPayload`        |
+
+`POST /api/consultations/:id/finalize` returns `FinalizationResult`
+(`{ record, alreadyFinalized }`) — `201` on first finalization, `200` on a repeat.
+`GET /api/records` accepts `patientId`, `status`, `consultationType`, `query`, `from`
+and `to`.
 
 Every response uses one of two shapes:
 
@@ -425,6 +605,9 @@ Feature-scoped Zustand stores, not one global blob:
 | `stores/consultation.store.ts`         | The consultation aggregate, load status, save state, and every doctor decision. All writes funnel through one `mutate`.  |
 | `stores/patient-context.store.ts`      | Everything known before the visit. The single source consumed by the header, brief, context panel and treatment step.    |
 | `stores/clinical-intelligence.store.ts`| Availability, payload and preview source. Structurally separate from the record — it cannot reach a doctor decision.     |
+| `stores/record.store.ts`               | The records archive, its filters, and the record open in the viewer.                                                     |
+| `stores/audit.store.ts`                | Audit events for one consultation or record; tracks which entity is loaded so repeat opens are cheap.                     |
+| `stores/patient-communication.store.ts`| The doctor-side preview of the patient payload. Reading it transmits nothing.                                             |
 | `stores/ui.store.ts`                   | Mobile navigation drawer state.                                                                                          |
 
 **Access grants and consultations are not persisted to the browser.** Reloading
@@ -460,10 +643,11 @@ these states are exercised in normal use. Set it to `0` for tests.
 
 ## Notes on the mock data
 
-`data/appointments.json` is authored against a fixture anchor date and rebased on load
-(`backend/src/mock/db.ts`) by `today − anchor` whole days, so the dataset always spans
-past / today / upcoming whenever the app is run. Delete that rebasing step once a real
-database supplies live rows.
+`data/appointments.json` is authored against a fixture anchor date and rebased by
+`today − anchor` whole days, so the dataset always spans past / today / upcoming whenever
+the app is run. The shift is applied **per read** in `appointment.repository`, not once at
+module load, so a server left running across midnight does not keep serving yesterday's
+window. Delete that rebasing step once a real database supplies live rows.
 
 | File                                    | Contents                                                          |
 | --------------------------------------- | ----------------------------------------------------------------- |
@@ -476,6 +660,8 @@ database supplies live rows.
 | `data/patient-contexts.json`            | Allergies, history, medications and previous visits for 6 patients |
 | `data/case-intake.json`                 | Patient-reported complaint, HPI, symptoms and timeline for 6 visits |
 | `data/consultations.json`               | Consultation seed (empty; session records live in memory)         |
+| `data/consultation-records.json`        | Two finalized records with full snapshots                         |
+| `data/audit-events.json`                | 21 seeded audit events across those two records                   |
 | `data/clinical-intelligence-fixtures.json` | **AI FIXTURE / TEST DATA ONLY** — placeholder labels, no clinical content |
 
 All patients, doctors and clinical details are fictional.
@@ -493,8 +679,9 @@ Intentionally **not** implemented:
 - **No real clinical decision support.** Nothing in this application evaluates a patient, and no clinical content is generated. Every assessment, investigation, prescription and follow-up is authored by the doctor.
 - **No production authorization.** Access grants are read from fixtures and are not enforced anywhere. There is no consent verification, token signing, revocation checking or audit logging.
 - **No patient-application integration**, WhatsApp, audio recording or transcription.
-- **Records and finalisation (Phase 3).** A finalized consultation is terminal; amendment, archival and cross-session history are not implemented, and `/records` remains a placeholder.
-- **No automated test suite.** Verified by typecheck, lint, production build, a scripted API contract pass (67 assertions) and a scripted browser pass across four viewports (97 assertions).
+- **No amendment workflow.** Versioning, `amendedFromRecordId` and `supersededByRecordId` are modelled and the repository is write-once, but creating an amended version is not implemented. Nothing in the UI suggests otherwise.
+- **No cross-session history.** Records created during a session live in memory and are lost on API restart; only the two seeded records survive.
+- **No automated test suite.** Verified by typecheck, lint, production build, scripted API contract passes (69 + 106 assertions) and scripted browser passes across four viewports (47 + 97 + 100 assertions).
 
 ## Configuration
 

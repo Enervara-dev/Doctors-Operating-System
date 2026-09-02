@@ -25,6 +25,13 @@ interface RecordState {
   reset: () => void;
 }
 
+/**
+ * Monotonic token for list requests. Filters can be re-submitted faster than a
+ * response returns, so only the newest request is allowed to write results —
+ * otherwise a slower earlier load overwrites the filtered list.
+ */
+let listRequestId = 0;
+
 export const useRecordStore = create<RecordState>()((set, get) => ({
   records: [],
   listStatus: "idle",
@@ -37,10 +44,16 @@ export const useRecordStore = create<RecordState>()((set, get) => ({
 
   async loadRecords(filters) {
     const next = filters ?? get().filters;
+    listRequestId += 1;
+    const requestId = listRequestId;
+
     set({ listStatus: "loading", listFailure: null, filters: next });
     try {
-      set({ records: await recordsApi.list(next), listStatus: "ready", listFailure: null });
+      const records = await recordsApi.list(next);
+      if (requestId !== listRequestId) return;
+      set({ records, listStatus: "ready", listFailure: null });
     } catch (error) {
+      if (requestId !== listRequestId) return;
       set({ listStatus: "error", listFailure: toRequestFailure(error) });
     }
   },

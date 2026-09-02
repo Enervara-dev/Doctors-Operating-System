@@ -30,16 +30,19 @@ import type {
 import { addDaysToIsoDate, differenceInDays, todayIsoDate } from "./date";
 
 /**
- * The date the appointment fixtures were authored against. Every fixture date
- * is shifted by `today - anchor` on load, so the demo dataset always spans
- * past / today / upcoming no matter when the app is run. Delete this rebasing
- * step once a real database supplies live appointment rows.
+ * The date the appointment fixtures were authored against. Every fixture date is
+ * shifted by `today - anchor`, so the demo dataset always spans past / today /
+ * upcoming no matter when the app is run.
+ *
+ * The shift is applied per read rather than once at module load: a server left
+ * running across midnight would otherwise keep serving yesterday's window.
+ * Delete this rebasing step once a real database supplies live appointment rows.
  */
 const FIXTURE_ANCHOR_DATE = "2026-09-02";
 
-function rebaseAppointments(appointments: Appointment[]): Appointment[] {
+export function rebaseAppointments(appointments: readonly Appointment[]): Appointment[] {
   const shift = differenceInDays(FIXTURE_ANCHOR_DATE, todayIsoDate());
-  if (shift === 0) return appointments;
+  if (shift === 0) return [...appointments];
   return appointments.map((appointment) => ({
     ...appointment,
     date: addDaysToIsoDate(appointment.date, shift),
@@ -53,7 +56,8 @@ function rebaseAppointments(appointments: Appointment[]): Appointment[] {
 export const db = {
   doctors: doctorsFixture as Doctor[],
   patients: patientsFixture as Patient[],
-  appointments: rebaseAppointments(appointmentsFixture as Appointment[]),
+  /** Authored dates; the repository rebases them onto the current day per read. */
+  appointmentSeed: appointmentsFixture as Appointment[],
   credentials: credentialsFixture as CredentialRecord[],
   accessCodes: accessCodesFixture as AccessCodeRecord[],
   sharingLinks: sharingLinksFixture as SharingLinkRecord[],
