@@ -1,20 +1,29 @@
+import type { ContentProvenance } from "./transcript";
+
 /**
- * Contracts for the future clinical intelligence layer.
+ * Contracts for the Clinical Intelligence Platform.
  *
- * Nothing in this file is produced by an AI service today. It exists so that
- * every consumer — stores, hooks and components — is already written against
- * the shape the service will return, and so the UI degrades correctly when
- * fields are absent. Every payload field is optional: a partial response must
- * render, not crash.
+ * The Doctor application does not reason clinically. It consumes structured
+ * output the platform produces from the consultation and presents it for the
+ * doctor to review. Nothing here is a decision, and nothing here is generated
+ * inside this repository.
  *
- * This layer is strictly an *input* to the doctor. It never carries a decision.
+ * Every payload field is optional: the platform publishes incrementally, so a
+ * partial response must render rather than break the workspace.
  */
 
-export type IntelligenceAvailability =
+/**
+ * Availability is always explicit — a missing platform is a legitimate product
+ * state, not an error to hide. `STALE` means the last payload predates newer
+ * transcript content and a refresh is in flight or overdue.
+ */
+export type ClinicalIntelligenceStatus =
   | "UNAVAILABLE"
+  | "CONNECTING"
   | "WAITING"
-  | "AVAILABLE"
   | "PARTIAL"
+  | "AVAILABLE"
+  | "STALE"
   | "ERROR";
 
 export type EvidenceKind =
@@ -23,31 +32,37 @@ export type EvidenceKind =
   | "HISTORY"
   | "MEDICATION"
   | "INVESTIGATION"
-  | "DEMOGRAPHIC";
+  | "DEMOGRAPHIC"
+  | "RISK_FACTOR";
 
-/** One patient-specific fact cited in support of, or against, a consideration. */
+/** One patient-specific fact cited for or against a consideration. */
 export interface EvidenceItem {
   id: string;
   kind: EvidenceKind;
   label: string;
   detail?: string;
-  /** Points back into patient/case context so the doctor can verify the claim. */
+  /** Points into the clinical context or transcript so the doctor can verify it. */
   sourceRef?: string;
+  /** The utterance this was drawn from, where the platform reports it. */
+  sourceUtteranceId?: string;
 }
 
-/** External reference material backing a suggestion. */
+/** External reference material supporting an output. */
 export interface ClinicalEvidence {
   id: string;
   title: string;
   source: string;
   citation?: string;
   url?: string;
+  relatedConsiderationId?: string;
 }
 
 export interface MissingInformation {
   id: string;
   label: string;
   whyItMatters?: string;
+  /** A question the doctor may choose to ask. Asking it is never assumed. */
+  suggestedQuestion?: string;
   relatedConsiderationId?: string;
 }
 
@@ -58,93 +73,137 @@ export interface SuggestedQuestion {
   relatedConsiderationId?: string;
 }
 
-export type RedFlagSeverity = "WARNING" | "CRITICAL";
+export type SafetySeverity = "ADVISORY" | "WARNING" | "CRITICAL";
 
-export interface RedFlag {
+/**
+ * Safety-critical output. Kept as one type across red flags, contraindications,
+ * interactions and risk findings so the workspace can present them together
+ * with a single visual hierarchy.
+ */
+export type SafetyAlertKind =
+  | "RED_FLAG"
+  | "CONTRAINDICATION"
+  | "DRUG_INTERACTION"
+  | "RISK_FACTOR";
+
+export interface ClinicalSafetyAlert {
   id: string;
+  kind: SafetyAlertKind;
+  severity: SafetySeverity;
   label: string;
-  severity: RedFlagSeverity;
+  /** What was observed. */
+  finding?: string;
+  /** Why it matters clinically. */
   rationale?: string;
-  action?: string;
+  /** What the doctor may wish to consider. Advisory only. */
+  suggestedAction?: string;
+  supportingEvidence?: EvidenceItem[];
+  /** Populated for CONTRAINDICATION and DRUG_INTERACTION. */
+  relatedMedications?: string[];
+  detectedAt?: string;
 }
 
-/** A possible clinical consideration. Explicitly not a diagnosis. */
+/**
+ * A possible clinical consideration. Explicitly not a diagnosis, and never
+ * promoted into one automatically.
+ */
 export interface ClinicalConsideration {
   id: string;
   condition: string;
   relevance?: string;
   rationale?: string;
-  patientSpecificFactors?: EvidenceItem[];
+  /** 0–1 where the platform reports one. Never rendered as a certainty. */
+  confidence?: number;
+  supportingFindings?: EvidenceItem[];
+  contradictingFindings?: EvidenceItem[];
   relevantHistory?: EvidenceItem[];
   missingInformation?: string[];
   importantQuestions?: string[];
-  redFlags?: string[];
+  safetyAlertIds?: string[];
+  updatedAt?: string;
 }
 
-export interface DifferentialDiagnosis {
-  id: string;
-  condition: string;
-  relevance?: string;
-  supportingEvidence?: EvidenceItem[];
-  contradictoryEvidence?: EvidenceItem[];
-  patientSpecificFactors?: EvidenceItem[];
-  missingInformation?: string[];
-  importantQuestions?: string[];
-  redFlags?: string[];
-  rationale?: string;
-}
+export type InvestigationPriority = "ROUTINE" | "IMPORTANT" | "URGENT";
 
-export interface InvestigationSuggestion {
+/**
+ * A recommended investigation. Distinct from `SelectedInvestigation` on the
+ * consultation, which is what the doctor has actually ordered.
+ */
+export interface InvestigationRecommendation {
   id: string;
   name: string;
-  purpose: string;
+  /** Why this is being recommended for this patient. */
+  rationale: string;
+  /** The question the result would answer. */
   clinicalQuestion: string;
+  priority: InvestigationPriority;
+  supportingFindings?: EvidenceItem[];
   relatedConsiderationId?: string;
   relatedConsideration?: string;
-  source: "AI" | "SYSTEM";
-}
-
-/** Consideration -> investigation -> clinical purpose, as the PRD requires. */
-export interface InvestigationMapping {
-  id: string;
-  considerationId: string;
-  consideration: string;
-  investigations: InvestigationSuggestion[];
-}
-
-export type MedicationConsiderationSeverity = "INFO" | "WARNING" | "CRITICAL";
-
-export interface MedicationConsideration {
-  id: string;
-  topic: string;
-  detail: string;
-  severity: MedicationConsiderationSeverity;
-  relatedMedication?: string;
+  source: "CLINICAL_INTELLIGENCE" | "SYSTEM";
+  generatedAt?: string;
 }
 
 export interface ClinicalIntelligence {
   consultationId: string;
   generatedAt: string;
+  /** Increments with each published revision; earlier versions are retained. */
+  version: number;
   /**
-   * Marks where a payload came from. `FIXTURE` payloads are test data and the
-   * UI labels them as such — they must never read as real clinical output.
+   * `FIXTURE` marks synthetic output from the mock adapter. The UI labels it as
+   * test data wherever it appears; it must never read as real clinical output.
    */
-  provenance: "FIXTURE" | "SERVICE";
+  provenance: ContentProvenance;
 
   clinicalConsiderations?: ClinicalConsideration[];
-  differentialDiagnoses?: DifferentialDiagnosis[];
+  investigationRecommendations?: InvestigationRecommendation[];
   missingInformation?: MissingInformation[];
   suggestedQuestions?: SuggestedQuestion[];
-  redFlags?: RedFlag[];
-  investigationMappings?: InvestigationMapping[];
-  medicationConsiderations?: MedicationConsideration[];
+  safetyAlerts?: ClinicalSafetyAlert[];
   evidence?: ClinicalEvidence[];
 }
 
-/** What the API returns: availability is always explicit, payload may be null. */
+/** What every Clinical Intelligence endpoint returns: status is never implicit. */
 export interface ClinicalIntelligenceEnvelope {
-  availability: IntelligenceAvailability;
+  status: ClinicalIntelligenceStatus;
   intelligence: ClinicalIntelligence | null;
-  /** Explains UNAVAILABLE / ERROR to the doctor in plain language. */
+  /** Plain-language explanation for UNAVAILABLE, ERROR and STALE. */
   message: string | null;
+  /** Set when the payload is older than the newest transcript content. */
+  staleSince: string | null;
+}
+
+/** Domain-scoped responses, so no surface has to fetch the whole payload. */
+export interface ClinicalConsiderationsResponse {
+  status: ClinicalIntelligenceStatus;
+  message: string | null;
+  version: number | null;
+  generatedAt: string | null;
+  considerations: ClinicalConsideration[];
+}
+
+export interface InvestigationRecommendationsResponse {
+  status: ClinicalIntelligenceStatus;
+  message: string | null;
+  version: number | null;
+  generatedAt: string | null;
+  recommendations: InvestigationRecommendation[];
+}
+
+export interface MissingInformationResponse {
+  status: ClinicalIntelligenceStatus;
+  message: string | null;
+  items: MissingInformation[];
+}
+
+export interface ClinicalSafetyResponse {
+  status: ClinicalIntelligenceStatus;
+  message: string | null;
+  alerts: ClinicalSafetyAlert[];
+}
+
+export interface ClinicalEvidenceResponse {
+  status: ClinicalIntelligenceStatus;
+  message: string | null;
+  evidence: ClinicalEvidence[];
 }

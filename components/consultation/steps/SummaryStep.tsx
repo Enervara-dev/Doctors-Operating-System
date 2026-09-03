@@ -98,18 +98,27 @@ export function SummaryStep() {
   const readOnly = !isEditable;
   const { caseContext, treatmentPlan, followUp } = consultation;
 
-  const consideredDifferentials = consultation.differentialReviews.filter(
-    (review) => review.disposition === "ACCEPTED_FOR_CONSIDERATION",
+  const acceptedConsiderations = consultation.doctorDecisions.filter(
+    (decision) =>
+      decision.subject === "CLINICAL_CONSIDERATION" &&
+      decision.outcome === "ACCEPTED_FOR_CONSIDERATION",
   );
 
   const readiness = summary.data?.finalization ?? null;
-  const isReadyForReview = consultation.status === "READY_FOR_REVIEW";
+  const isInReview = consultation.status === "REVIEW";
+  /**
+   * Moving to review is what clears the workflow issue, so it cannot itself
+   * wait on that issue clearing — everything else must already be in order.
+   */
+  const canMoveToReview = Boolean(
+    readiness && readiness.issues.every((issue) => issue.field === "workflow"),
+  );
   const recordId = finalizedRecordId ?? consultation.recordId;
 
   async function handleMarkReady() {
     const saved = await save();
     if (!saved) return;
-    await patch({ status: "READY_FOR_REVIEW" });
+    await patch({ status: "REVIEW" });
   }
 
   async function handleFinalize() {
@@ -129,7 +138,7 @@ export function SummaryStep() {
 
       <StepSection
         title="Presenting complaint"
-        action={<EditLink consultationId={id} step="ACTIVE_CONSULTATION" disabled={readOnly} />}
+        action={<EditLink consultationId={id} step="LIVE_CONSULTATION" disabled={readOnly} />}
       >
         <Prose value={caseContext.chiefComplaint} fallback="No chief complaint recorded." />
         {caseContext.historyOfPresentIllness ? (
@@ -141,7 +150,7 @@ export function SummaryStep() {
 
       <StepSection
         title="Symptoms and timeline"
-        action={<EditLink consultationId={id} step="ACTIVE_CONSULTATION" disabled={readOnly} />}
+        action={<EditLink consultationId={id} step="LIVE_CONSULTATION" disabled={readOnly} />}
       >
         {caseContext.symptoms.length === 0 ? (
           <StepEmpty>No symptoms recorded.</StepEmpty>
@@ -191,7 +200,7 @@ export function SummaryStep() {
 
       <StepSection
         title="Consultation notes"
-        action={<EditLink consultationId={id} step="ACTIVE_CONSULTATION" disabled={readOnly} />}
+        action={<EditLink consultationId={id} step="LIVE_CONSULTATION" disabled={readOnly} />}
       >
         <Prose value={caseContext.doctorNotes} fallback="No consultation notes recorded." />
       </StepSection>
@@ -220,18 +229,18 @@ export function SummaryStep() {
       </StepSection>
 
       <StepSection
-        title="Differentials considered"
-        description="Suggestions you kept in play. These are not assessments."
+        title="Considerations you accepted"
+        description="Clinical Intelligence output you kept in play. These are not assessments."
       >
-        {consideredDifferentials.length === 0 ? (
-          <StepEmpty>No suggested differentials were accepted for consideration.</StepEmpty>
+        {acceptedConsiderations.length === 0 ? (
+          <StepEmpty>No clinical considerations were accepted for consideration.</StepEmpty>
         ) : (
           <ul className="space-y-2">
-            {consideredDifferentials.map((review) => (
-              <li key={review.differentialId} className="text-sm">
-                <span className="text-text">{review.condition}</span>
-                {review.doctorNote ? (
-                  <span className="block text-xs text-text-secondary">{review.doctorNote}</span>
+            {acceptedConsiderations.map((review) => (
+              <li key={review.subjectId} className="text-sm">
+                <span className="text-text">{review.subjectLabel}</span>
+                {review.note ? (
+                  <span className="block text-xs text-text-secondary">{review.note}</span>
                 ) : null}
               </li>
             ))}
@@ -466,22 +475,22 @@ export function SummaryStep() {
             </Alert>
           ) : null}
 
-          {isReadyForReview ? (
-            <Alert tone="info" title="Marked ready for review" className="mt-5">
-              Editing any section returns this consultation to draft.
+          {isInReview ? (
+            <Alert tone="info" title="Moved to review" className="mt-5">
+              The live session has ended. Review every section, then finalize.
             </Alert>
           ) : null}
 
           <div className="mt-5 flex flex-wrap gap-2">
-            {!isReadyForReview ? (
+            {!isInReview ? (
               <Button
                 variant="secondary"
                 isLoading={saveState === "SAVING"}
-                disabled={!readiness?.ready}
+                disabled={!canMoveToReview}
                 onClick={() => void handleMarkReady()}
               >
                 <CircleCheckBig aria-hidden className="size-4" />
-                Mark ready for review
+                Move to review
               </Button>
             ) : null}
 

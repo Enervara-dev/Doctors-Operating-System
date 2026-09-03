@@ -5,7 +5,6 @@ import {
   consultationsApi,
   type ConsultationPatch,
   type DiagnosisInput,
-  type DifferentialReviewInput,
   type InvestigationInput,
   type MedicationInput,
 } from "@/features/consultations/consultations.api";
@@ -61,7 +60,6 @@ interface ConsultationState {
 
   saveContext: (context: Partial<CurrentCaseContext>) => Promise<boolean>;
   saveNotes: (notes: { doctorNotes?: string; additionalObservations?: string }) => Promise<boolean>;
-  reviewDifferential: (review: DifferentialReviewInput) => Promise<boolean>;
   saveDiagnoses: (diagnoses: DiagnosisInput[], assessmentNotes: string) => Promise<boolean>;
 
   addInvestigation: (input: InvestigationInput) => Promise<boolean>;
@@ -199,10 +197,6 @@ export const useConsultationStore = create<ConsultationState>()((set, get) => {
 
     saveNotes(notes) {
       return mutate((id) => consultationsApi.updateNotes(id, notes));
-    },
-
-    reviewDifferential(review) {
-      return mutate((id) => consultationsApi.reviewDifferential(id, review));
     },
 
     saveDiagnoses(diagnoses, assessmentNotes) {

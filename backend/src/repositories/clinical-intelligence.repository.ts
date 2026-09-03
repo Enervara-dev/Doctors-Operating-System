@@ -1,16 +1,30 @@
-import { db } from "../mock/db";
-import type { ClinicalIntelligenceFixtures } from "../mock/types";
+import type { ClinicalIntelligence } from "../domain/types";
 
 /**
- * Stands in for the future clinical intelligence service.
+ * Published Clinical Intelligence, retained per version.
  *
- * There is no intelligence provider in Phase 2, so the only real answer this
- * repository can give is "nothing available". The fixtures it also exposes are
- * synthetic placeholders used to exercise the UI contract; the service layer
- * returns them only when a caller explicitly opts in.
+ * Earlier publications are never discarded: the record must be able to show
+ * what was on screen when a decision was taken, and a later revision must not
+ * silently overwrite the output the doctor actually reviewed.
  */
+const publications = new Map<string, ClinicalIntelligence[]>();
+
 export const clinicalIntelligenceRepository = {
-  async findFixtures(): Promise<ClinicalIntelligenceFixtures> {
-    return db.clinicalIntelligenceFixtures;
+  async publish(
+    consultationId: string,
+    intelligence: ClinicalIntelligence,
+  ): Promise<ClinicalIntelligence> {
+    const history = publications.get(consultationId) ?? [];
+    publications.set(consultationId, [...history, intelligence]);
+    return intelligence;
+  },
+
+  async findLatest(consultationId: string): Promise<ClinicalIntelligence | null> {
+    const history = publications.get(consultationId);
+    return history && history.length > 0 ? (history[history.length - 1] ?? null) : null;
+  },
+
+  async listVersions(consultationId: string): Promise<ClinicalIntelligence[]> {
+    return [...(publications.get(consultationId) ?? [])];
   },
 };

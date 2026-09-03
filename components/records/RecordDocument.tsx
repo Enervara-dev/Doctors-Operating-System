@@ -8,10 +8,10 @@ import { Disclosure } from "@/components/ui/Disclosure";
 import {
   ALLERGY_SEVERITY_TONE,
   DIAGNOSIS_CERTAINTY_LABELS,
-  DISPOSITION_META,
   INVESTIGATION_URGENCY_LABELS,
   MEDICAL_HISTORY_CATEGORY_LABELS,
 } from "@/lib/constants/consultation";
+import { DECISION_OUTCOME_META } from "@/lib/constants/live-consultation";
 import { ACCESS_METHOD_LABELS } from "@/lib/constants/patient-access";
 import { formatHistoricalDate, formatTimestamp } from "@/lib/utils/date";
 import type { ConsultationRecord } from "@/types";
@@ -193,11 +193,13 @@ export function RecordDocument({ record }: { record: ConsultationRecord }) {
       </Section>
 
       <Section title="Clinical intelligence and your review of it">
-        {record.aiRecommendations ? (
+        {record.clinicalIntelligence ? (
           <p className="text-sm text-text-secondary">
-            Intelligence availability at consultation:{" "}
-            <span className="text-text">{record.aiRecommendations.availability.toLowerCase()}</span>
-            {record.aiRecommendations.provenance === "FIXTURE" ? (
+            Platform status at consultation:{" "}
+            <span className="text-text">
+              {record.clinicalIntelligence.status.toLowerCase()}
+            </span>
+            {record.clinicalIntelligence.provenance === "FIXTURE" ? (
               <Badge tone="warning" className="ml-2">
                 Test fixture
               </Badge>
@@ -205,20 +207,20 @@ export function RecordDocument({ record }: { record: ConsultationRecord }) {
           </p>
         ) : (
           <p className="text-sm text-text-secondary">
-            No clinical intelligence was available during this consultation.
+            No Clinical Intelligence was available during this consultation.
           </p>
         )}
 
-        {record.differentialReviews.length > 0 ? (
+        {record.doctorDecisions.length > 0 ? (
           <ul className="mt-3 space-y-2">
-            {record.differentialReviews.map((review) => {
-              const meta = DISPOSITION_META[review.disposition];
+            {record.doctorDecisions.map((decision) => {
+              const meta = DECISION_OUTCOME_META[decision.outcome];
               return (
-                <li key={review.differentialId} className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm text-text">{review.condition}</span>
+                <li key={decision.id} className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-text">{decision.subjectLabel}</span>
                   <Badge tone={meta.tone}>{meta.label}</Badge>
-                  {review.doctorNote ? (
-                    <span className="w-full text-xs text-text-secondary">{review.doctorNote}</span>
+                  {decision.note ? (
+                    <span className="w-full text-xs text-text-secondary">{decision.note}</span>
                   ) : null}
                 </li>
               );
@@ -226,7 +228,7 @@ export function RecordDocument({ record }: { record: ConsultationRecord }) {
           </ul>
         ) : (
           <p className="mt-3 text-sm text-text-tertiary">
-            No suggested differentials were reviewed.
+            No Clinical Intelligence output was reviewed.
           </p>
         )}
 

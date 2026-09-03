@@ -2,6 +2,9 @@
   "name": "enervara-doctor",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "concurrently -n web,api -c cyan,magenta \"npm:dev:web\" \"npm:dev:api\"",
     "dev:web": "next dev",
@@ -9,7 +12,7 @@
     "build": "npm run build:api && next build",
     "build:web": "next build",
     "build:api": "rimraf backend/dist && tsc -p backend/tsconfig.json",
-    "start": "concurrently -n web,api -c cyan,magenta \"npm:start:web\" \"npm:start:api\"",
+    "start": "node scripts/start-production.mjs",
     "start:web": "next start",
     "start:api": "node backend/dist/backend/src/server.js",
     "typecheck": "npm run typecheck:web && npm run typecheck:api",

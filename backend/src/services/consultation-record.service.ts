@@ -19,6 +19,7 @@ import { auditService } from "./audit.service";
 import { clinicalIntelligenceService } from "./clinical-intelligence.service";
 import { patientCommunicationService } from "./patient-communication.service";
 import { patientContextService } from "./patient-context.service";
+import { transcriptService } from "./transcript.service";
 
 /* -------------------------------------------------------------------------- */
 /* Finalization guard                                                          */
@@ -69,6 +70,12 @@ async function assessReadiness(consultation: Consultation): Promise<Finalization
       field: "workflow",
       message: "This consultation has not been started.",
     });
+  } else if (consultation.status !== "REVIEW" && consultation.status !== "FINALIZING") {
+    issues.push({
+      field: "workflow",
+      message:
+        "End the live consultation and move it to review before finalizing.",
+    });
   }
 
   if (consultation.diagnoses.length === 0) {
@@ -90,7 +97,8 @@ async function buildRecord(
   doctor: Doctor,
 ): Promise<ConsultationRecord> {
   const patientContext = await patientContextService.getByPatientId(consultation.patientId);
-  const intelligence = clinicalIntelligenceService.getLastServed(consultation.id);
+  const intelligence = await clinicalIntelligenceService.getEnvelope(consultation.id);
+  const transcript = await transcriptService.getSnapshot(consultation.id);
   const now = new Date().toISOString();
 
   const { clinicalFindings, ...narrative } = consultation.caseContext;
@@ -130,15 +138,15 @@ async function buildRecord(
     consultationContext: narrative,
     clinicalFindings,
 
-    aiRecommendations: intelligence
-      ? {
-          availability: intelligence.availability,
-          provenance: intelligence.intelligence?.provenance ?? null,
-          intelligence: intelligence.intelligence,
-          capturedAt: now,
-        }
-      : null,
-    differentialReviews: consultation.differentialReviews,
+    transcript: transcript.utterances,
+
+    clinicalIntelligence: {
+      status: intelligence.status,
+      provenance: intelligence.intelligence?.provenance ?? null,
+      intelligence: intelligence.intelligence,
+      capturedAt: now,
+    },
+    doctorDecisions: consultation.doctorDecisions,
 
     finalAssessment: {
       primary,

@@ -1,7 +1,6 @@
 import appointmentsFixture from "../../../data/appointments.json";
 import auditEventsFixture from "../../../data/audit-events.json";
 import caseIntakeFixture from "../../../data/case-intake.json";
-import clinicalIntelligenceFixture from "../../../data/clinical-intelligence-fixtures.json";
 import consultationRecordsFixture from "../../../data/consultation-records.json";
 import consultationsFixture from "../../../data/consultations.json";
 import credentialsFixture from "../../../data/credentials.json";
@@ -22,7 +21,6 @@ import type {
 import type {
   AccessCodeRecord,
   CaseIntakeRecord,
-  ClinicalIntelligenceFixtures,
   CredentialRecord,
   PatientContextRecord,
   SharingLinkRecord,
@@ -72,7 +70,4 @@ export const db = {
   /** Finalized records from earlier visits, so the archive is not empty. */
   consultationRecordSeed: consultationRecordsFixture as unknown as ConsultationRecord[],
   auditEventSeed: auditEventsFixture as unknown as AuditEvent[],
-  /** AI FIXTURE / TEST DATA ONLY. Served solely on an explicit opt-in request. */
-  clinicalIntelligenceFixtures:
-    clinicalIntelligenceFixture as unknown as ClinicalIntelligenceFixtures,
 } as const;

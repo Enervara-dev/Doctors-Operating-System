@@ -1,72 +1,57 @@
 "use client";
 
-import { useState } from "react";
-import { BrainCircuit, Loader2, TriangleAlert } from "lucide-react";
-import { DifferentialCard } from "./DifferentialCard";
+import { BrainCircuit, FlaskConical, Loader2, TriangleAlert } from "lucide-react";
+import { ClinicalConsiderationCard } from "./ClinicalConsiderationCard";
 import { InvestigationRecommendationCard } from "./InvestigationRecommendationCard";
-import { MedicationConsiderationCard } from "./MedicationConsiderationCard";
 import { MissingInformationCard } from "./MissingInformationCard";
-import { RecommendationCard } from "./RecommendationCard";
-import { RedFlagCard } from "./RedFlagCard";
-import { SuggestedQuestionCard } from "./SuggestedQuestionCard";
-import { Select } from "@/components/ui/Select";
+import { SafetyAlertCard } from "./SafetyAlertCard";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { INTELLIGENCE_STATUS_META } from "@/lib/constants/live-consultation";
 import { cn } from "@/lib/utils/cn";
-import type { IntelligencePreviewSource } from "@/features/clinical-intelligence/clinical-intelligence.api";
 import {
-  selectIsFixtureData,
+  selectConsiderations,
+  selectEvidence,
+  selectIsFixtureIntelligence,
+  selectMissingInformation,
+  selectRecommendations,
+  selectSafetyAlerts,
   useClinicalIntelligenceStore,
 } from "@/stores/clinical-intelligence.store";
 import { selectIsEditable, useConsultationStore } from "@/stores/consultation.store";
-import type { Consultation, ConsultationStep, InvestigationSuggestion } from "@/types";
+import type { Consultation } from "@/types";
 
-type IntelligenceSection =
-  | "redFlags"
-  | "considerations"
-  | "differentials"
-  | "missingInformation"
-  | "suggestedQuestions"
-  | "investigations"
-  | "medications"
-  | "evidence";
-
-/**
- * Which intelligence is relevant while the doctor is on a given step. Keeping
- * this explicit stops the panel from becoming an undifferentiated dump.
- */
-const SECTIONS_BY_STEP: Record<ConsultationStep, readonly IntelligenceSection[]> = {
-  BRIEF: ["redFlags", "missingInformation"],
-  ACTIVE_CONSULTATION: [
-    "redFlags",
-    "considerations",
-    "suggestedQuestions",
-    "missingInformation",
-  ],
-  ASSESSMENT: ["redFlags", "considerations", "missingInformation"],
-  INVESTIGATIONS: ["investigations", "missingInformation"],
-  DIAGNOSIS: ["differentials", "evidence"],
-  TREATMENT: ["medications", "redFlags"],
-  FOLLOW_UP: ["missingInformation"],
-  SUMMARY: [],
-};
-
-const PREVIEW_OPTIONS = [
-  { value: "service", label: "Live service (none connected)" },
-  { value: "waiting", label: "Test: waiting" },
-  { value: "fixture", label: "Test: available payload" },
-  { value: "fixture-partial", label: "Test: partial payload" },
-  { value: "error", label: "Test: error" },
-] as const;
-
-function SectionShell({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  count,
+  children,
+}: {
+  title: string;
+  count?: number;
+  children: React.ReactNode;
+}) {
   return (
     <section>
-      <h3 className="text-eyebrow text-text-tertiary">{title}</h3>
+      <h3 className="flex items-center gap-2 text-eyebrow text-text-tertiary">
+        {title}
+        {typeof count === "number" && count > 0 ? (
+          <span className="rounded-full bg-surface-muted px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums">
+            {count}
+          </span>
+        ) : null}
+      </h3>
       <div className="mt-2.5 space-y-2.5">{children}</div>
     </section>
   );
 }
 
-function StateNotice({
+/**
+ * Explains an empty panel rather than leaving it blank.
+ *
+ * An absent platform is a supported product state: the doctor can run the whole
+ * consultation without it, and the notice says so.
+ */
+function StatusNotice({
   tone,
   title,
   description,
@@ -76,7 +61,6 @@ function StateNotice({
   description: string;
 }) {
   const Icon = tone === "waiting" ? Loader2 : tone === "error" ? TriangleAlert : BrainCircuit;
-
   return (
     <div
       className={cn(
@@ -102,229 +86,172 @@ function StateNotice({
   );
 }
 
+/**
+ * The Clinical Intelligence surface for the live consultation.
+ *
+ * Safety comes first, then considerations, recommendations and gaps. Nothing
+ * here is a decision: what the doctor does with each item is recorded through
+ * the decision controls and stored on the consultation, never written back into
+ * the platform payload.
+ */
 export function ClinicalIntelligencePanel({
   consultation,
-  step,
+  className,
 }: {
   consultation: Consultation;
-  step: ConsultationStep;
+  className?: string;
 }) {
-  const availability = useClinicalIntelligenceStore((state) => state.availability);
-  const intelligence = useClinicalIntelligenceStore((state) => state.intelligence);
+  const status = useClinicalIntelligenceStore((state) => state.status);
   const message = useClinicalIntelligenceStore((state) => state.message);
-  const source = useClinicalIntelligenceStore((state) => state.source);
-  const load = useClinicalIntelligenceStore((state) => state.load);
-  const isFixture = useClinicalIntelligenceStore(selectIsFixtureData);
-
-  const reviewDifferential = useConsultationStore((state) => state.reviewDifferential);
-  const addInvestigation = useConsultationStore((state) => state.addInvestigation);
+  const intelligence = useClinicalIntelligenceStore((state) => state.intelligence);
+  const isFixture = useClinicalIntelligenceStore(selectIsFixtureIntelligence);
+  const considerations = useClinicalIntelligenceStore(selectConsiderations);
+  const recommendations = useClinicalIntelligenceStore(selectRecommendations);
+  const missingInformation = useClinicalIntelligenceStore(selectMissingInformation);
+  const safetyAlerts = useClinicalIntelligenceStore(selectSafetyAlerts);
+  const evidence = useClinicalIntelligenceStore(selectEvidence);
   const isEditable = useConsultationStore(selectIsEditable);
 
-  const [pendingSuggestionId, setPendingSuggestionId] = useState<string | null>(null);
+  const statusMeta = INTELLIGENCE_STATUS_META[status];
+  const hasContent =
+    considerations.length > 0 ||
+    recommendations.length > 0 ||
+    missingInformation.length > 0 ||
+    safetyAlerts.length > 0 ||
+    evidence.length > 0;
 
-  const sections = SECTIONS_BY_STEP[step];
-  if (sections.length === 0) return null;
-
-  const has = (section: IntelligenceSection): boolean => {
-    if (!sections.includes(section) || !intelligence) return false;
-    switch (section) {
-      case "redFlags":
-        return (intelligence.redFlags?.length ?? 0) > 0;
-      case "considerations":
-        return (intelligence.clinicalConsiderations?.length ?? 0) > 0;
-      case "differentials":
-        return (intelligence.differentialDiagnoses?.length ?? 0) > 0;
-      case "missingInformation":
-        return (intelligence.missingInformation?.length ?? 0) > 0;
-      case "suggestedQuestions":
-        return (intelligence.suggestedQuestions?.length ?? 0) > 0;
-      case "investigations":
-        return (intelligence.investigationMappings?.length ?? 0) > 0;
-      case "medications":
-        return (intelligence.medicationConsiderations?.length ?? 0) > 0;
-      case "evidence":
-        return (intelligence.evidence?.length ?? 0) > 0;
-    }
-  };
-
-  const hasAnythingForThisStep = sections.some(has);
-
-  async function handleSelectSuggestion(suggestion: InvestigationSuggestion) {
-    setPendingSuggestionId(suggestion.id);
-    await addInvestigation({
-      name: suggestion.name,
-      purpose: suggestion.purpose,
-      clinicalQuestion: suggestion.clinicalQuestion,
-      fromSuggestionId: suggestion.id,
-    });
-    setPendingSuggestionId(null);
-  }
-
-  const selectedSuggestionIds = new Set(
-    consultation.investigations
-      .map((investigation) => investigation.fromSuggestionId)
-      .filter((id): id is string => Boolean(id)),
-  );
-
-  const reviewsByDifferentialId = new Map(
-    consultation.differentialReviews.map((review) => [review.differentialId, review]),
-  );
-
+  // `relative` is load-bearing: an overflow container does not clip
+  // absolutely-positioned descendants unless it is itself their containing
+  // block, and without it the panel's content extends the page far below the
+  // visible layout.
   return (
-    <section
-      aria-label="Clinical intelligence"
-      className="rounded-card border border-border-default bg-surface-subtle"
+    <Card
+      role="region"
+      aria-label="Clinical Intelligence"
+      className={cn("relative flex min-h-0 flex-col overflow-hidden", className)}
     >
-      <div className="flex flex-col gap-3 border-b border-border-default px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-default px-4 py-3">
+        <h2 className="flex items-center gap-2 text-eyebrow text-text-secondary">
+          <BrainCircuit aria-hidden className="size-3.5" />
+          Clinical Intelligence
+        </h2>
         <div className="flex items-center gap-2">
-          <BrainCircuit aria-hidden className="size-4 text-text-tertiary" />
-          <h2 className="text-eyebrow text-text-secondary">Clinical intelligence</h2>
+          {intelligence ? (
+            <span className="text-xs text-text-tertiary">v{intelligence.version}</span>
+          ) : null}
+          <Badge tone={statusMeta.tone} withDot>
+            {statusMeta.label}
+          </Badge>
         </div>
-
-        <Select
-          label="Preview intelligence state (test data)"
-          labelHidden
-          options={PREVIEW_OPTIONS}
-          value={source}
-          className="h-8 w-full text-xs sm:w-64"
-          onChange={(event) =>
-            void load(consultation.id, event.target.value as IntelligencePreviewSource)
-          }
-        />
       </div>
 
-      <div className="space-y-4 p-4 sm:p-5">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
         {isFixture ? (
           <div
             role="note"
             className="flex gap-2.5 rounded-control border border-warning-border bg-warning-subtle p-3"
           >
-            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+            <FlaskConical aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
             <p className="text-xs text-text-secondary">
-              <span className="font-semibold text-warning">Test fixture — not clinical output.</span>{" "}
-              Every label below is a synthetic placeholder used to verify this interface. No
-              intelligence service is connected and nothing here is clinical advice.
+              <span className="font-semibold text-warning">
+                Test fixture — not clinical output.
+              </span>{" "}
+              Synthetic content from the mock adapter, shown so this interface can be verified.
             </p>
           </div>
         ) : null}
 
-        {availability === "UNAVAILABLE" ? (
-          <StateNotice
+        {status === "UNAVAILABLE" ? (
+          <StatusNotice
             tone="neutral"
-            title="No clinical intelligence available yet"
+            title="Clinical Intelligence not connected"
             description={
               message ??
-              "AI-generated clinical considerations will appear here when the clinical intelligence service is connected."
+              "Clinical considerations, investigation recommendations and safety findings will appear here once the platform is connected."
             }
           />
         ) : null}
 
-        {availability === "WAITING" ? (
-          <StateNotice
+        {status === "CONNECTING" || status === "WAITING" ? (
+          <StatusNotice
             tone="waiting"
-            title="Waiting for clinical intelligence…"
-            description="The workspace remains fully usable while this loads."
+            title={status === "CONNECTING" ? "Connecting…" : "Processing the consultation…"}
+            description={message ?? "The workspace remains fully usable while this completes."}
           />
         ) : null}
 
-        {availability === "ERROR" ? (
-          <StateNotice
+        {status === "ERROR" ? (
+          <StatusNotice
             tone="error"
-            title="Clinical intelligence could not be loaded"
+            title="Clinical Intelligence temporarily unavailable"
+            description={message ?? "The consultation can continue."}
+          />
+        ) : null}
+
+        {status === "STALE" ? (
+          <StatusNotice
+            tone="waiting"
+            title="Catching up with the conversation"
             description={
-              message ?? "This does not affect your consultation — continue as normal."
+              message ?? "Showing the last published output while newer content is processed."
             }
           />
         ) : null}
 
-        {(availability === "AVAILABLE" || availability === "PARTIAL") && !hasAnythingForThisStep ? (
-          <StateNotice
-            tone="neutral"
-            title="Nothing relevant to this step"
-            description="The current payload contains no intelligence for this part of the consultation."
-          />
-        ) : null}
-
-        {has("redFlags") ? (
-          <SectionShell title="Red flags">
-            {intelligence?.redFlags?.map((item) => <RedFlagCard key={item.id} item={item} />)}
-          </SectionShell>
-        ) : null}
-
-        {has("considerations") ? (
-          <SectionShell title="Possible clinical considerations — not confirmed diagnoses">
-            {intelligence?.clinicalConsiderations?.map((item) => (
-              <RecommendationCard key={item.id} consideration={item} />
-            ))}
-          </SectionShell>
-        ) : null}
-
-        {has("differentials") ? (
-          <SectionShell title="Differential diagnoses — suggestions for your review">
-            {intelligence?.differentialDiagnoses?.map((item) => (
-              <DifferentialCard
-                key={item.id}
-                differential={item}
-                review={reviewsByDifferentialId.get(item.id)}
-                onReview={reviewDifferential}
+        {safetyAlerts.length > 0 ? (
+          <Section title="Clinical safety" count={safetyAlerts.length}>
+            {safetyAlerts.map((alert) => (
+              <SafetyAlertCard
+                key={alert.id}
+                consultationId={consultation.id}
+                alert={alert}
                 disabled={!isEditable}
               />
             ))}
-          </SectionShell>
+          </Section>
         ) : null}
 
-        {has("investigations") ? (
-          <SectionShell title="Suggested investigations">
-            {intelligence?.investigationMappings?.map((mapping) => (
-              <div key={mapping.id}>
-                <p className="mb-2 text-xs text-text-secondary">
-                  For <span className="font-medium text-text">{mapping.consideration}</span>
-                </p>
-                <div className="space-y-2.5">
-                  {mapping.investigations.map((suggestion) => (
-                    <InvestigationRecommendationCard
-                      key={suggestion.id}
-                      suggestion={suggestion}
-                      onSelect={handleSelectSuggestion}
-                      isSelected={selectedSuggestionIds.has(suggestion.id)}
-                      isPending={pendingSuggestionId === suggestion.id}
-                      disabled={!isEditable}
-                    />
-                  ))}
-                </div>
-              </div>
+        {considerations.length > 0 ? (
+          <Section
+            title="Clinical considerations — not confirmed diagnoses"
+            count={considerations.length}
+          >
+            {considerations.map((consideration) => (
+              <ClinicalConsiderationCard
+                key={consideration.id}
+                consultationId={consultation.id}
+                consideration={consideration}
+                disabled={!isEditable}
+              />
             ))}
-          </SectionShell>
+          </Section>
         ) : null}
 
-        {has("medications") ? (
-          <SectionShell title="Medication considerations">
-            {intelligence?.medicationConsiderations?.map((item) => (
-              <MedicationConsiderationCard key={item.id} item={item} />
+        {recommendations.length > 0 ? (
+          <Section title="Investigation recommendations" count={recommendations.length}>
+            {recommendations.map((recommendation) => (
+              <InvestigationRecommendationCard
+                key={recommendation.id}
+                consultationId={consultation.id}
+                recommendation={recommendation}
+                disabled={!isEditable}
+              />
             ))}
-          </SectionShell>
+          </Section>
         ) : null}
 
-        {has("missingInformation") ? (
-          <SectionShell title="Missing information">
-            {intelligence?.missingInformation?.map((item) => (
+        {missingInformation.length > 0 ? (
+          <Section title="Missing information" count={missingInformation.length}>
+            {missingInformation.map((item) => (
               <MissingInformationCard key={item.id} item={item} />
             ))}
-          </SectionShell>
+          </Section>
         ) : null}
 
-        {has("suggestedQuestions") ? (
-          <SectionShell title="Questions you may want to ask">
-            {intelligence?.suggestedQuestions?.map((item) => (
-              <SuggestedQuestionCard key={item.id} item={item} />
-            ))}
-          </SectionShell>
-        ) : null}
-
-        {has("evidence") ? (
-          <SectionShell title="References">
+        {evidence.length > 0 ? (
+          <Section title="References">
             <ul className="space-y-1.5 text-sm">
-              {intelligence?.evidence?.map((entry) => (
+              {evidence.map((entry) => (
                 <li key={entry.id} className="text-text-secondary">
                   <span className="text-text">{entry.title}</span> — {entry.source}
                   {entry.citation ? (
@@ -333,14 +260,22 @@ export function ClinicalIntelligencePanel({
                 </li>
               ))}
             </ul>
-          </SectionShell>
+          </Section>
+        ) : null}
+
+        {(status === "AVAILABLE" || status === "PARTIAL" || status === "STALE") && !hasContent ? (
+          <StatusNotice
+            tone="neutral"
+            title="Nothing published yet"
+            description="The platform is connected but has not produced output for this consultation."
+          />
         ) : null}
 
         <p className="border-t border-border-default pt-3 text-xs text-text-tertiary">
-          Clinical intelligence is advisory context only. Assessments, investigations,
-          prescriptions and follow-up remain your decisions and are recorded separately.
+          Clinical Intelligence is advisory context. Your assessment, investigations,
+          prescriptions and follow-up are recorded separately and remain your decisions.
         </p>
       </div>
-    </section>
+    </Card>
   );
 }

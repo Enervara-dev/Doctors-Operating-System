@@ -6,8 +6,6 @@ import type {
   ConsultationSummary,
   CurrentCaseContext,
   Diagnosis,
-  DifferentialDisposition,
-  DifferentialReview,
   Doctor,
   FollowUpPlan,
   Medication,
@@ -15,6 +13,7 @@ import type {
   TreatmentPlan,
 } from "../domain/types";
 import { ApiError } from "../lib/api-error";
+import { assertTransition, isConsultationStatus } from "../lib/consultation-status";
 import { furthestOf, isStep, stepIndex } from "../lib/consultation-steps";
 import { simulateLatency } from "../lib/delay";
 import { createId } from "../lib/id";
@@ -22,6 +21,7 @@ import { accessGrantRepository } from "../repositories/access-grant.repository";
 import { appointmentRepository } from "../repositories/appointment.repository";
 import { caseIntakeRepository } from "../repositories/case-intake.repository";
 import { consultationRepository } from "../repositories/consultation.repository";
+import { doctorDecisionRepository } from "../repositories/doctor-decision.repository";
 import { patientRepository } from "../repositories/patient.repository";
 import { auditService } from "./audit.service";
 import { consultationRecordService } from "./consultation-record.service";
@@ -45,24 +45,6 @@ function assertMutable(consultation: Consultation): Consultation {
     );
   }
   return consultation;
-}
-
-const ALLOWED_TRANSITIONS: Record<ConsultationStatus, readonly ConsultationStatus[]> = {
-  NOT_STARTED: ["ACTIVE"],
-  ACTIVE: ["ACTIVE", "DRAFT", "READY_FOR_REVIEW"],
-  DRAFT: ["DRAFT", "ACTIVE", "READY_FOR_REVIEW"],
-  READY_FOR_REVIEW: ["READY_FOR_REVIEW", "DRAFT", "ACTIVE", "FINALIZED"],
-  FINALIZED: [],
-};
-
-function assertTransition(from: ConsultationStatus, to: ConsultationStatus): void {
-  if (!ALLOWED_TRANSITIONS[from].includes(to)) {
-    throw new ApiError(
-      409,
-      "INVALID_STATE_TRANSITION",
-      `A consultation cannot move from ${from} to ${to}.`,
-    );
-  }
 }
 
 function requireText(value: unknown, field: string, message: string): string {
@@ -89,24 +71,11 @@ function touch(consultation: Consultation): Consultation {
 }
 
 /**
- * Applied to every change that alters clinical content. Editing a consultation
- * that was marked ready for review returns it to DRAFT — the doctor has to
- * re-declare it ready, so review always covers what is actually recorded.
+ * Applied to every change that alters clinical content. Correcting a
+ * consultation that is already in REVIEW is normal reviewing, so the status is
+ * left alone; readiness is re-evaluated by the server on every read.
  */
-function touchContent(consultation: Consultation): Consultation {
-  return {
-    ...consultation,
-    status: consultation.status === "READY_FOR_REVIEW" ? "DRAFT" : consultation.status,
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-const DISPOSITION_WORDING: Record<DifferentialDisposition, string> = {
-  PENDING: "not reviewed",
-  ACCEPTED_FOR_CONSIDERATION: "accepted for consideration",
-  REJECTED: "rejected",
-  IGNORED: "ignored",
-};
+const touchContent = touch;
 
 /**
  * Resolves the authorization snapshot from a server-issued grant id.
@@ -209,7 +178,45 @@ export const consultationService = {
         "This consultation could not be found. It may have ended with the previous session.",
       );
     }
-    return consultation;
+    // Doctor decisions are owned by their own repository so platform output and
+    // doctor judgement stay in separate domains; the aggregate composes them.
+    return {
+      ...consultation,
+      doctorDecisions: await doctorDecisionRepository.list(consultationId),
+    };
+  },
+
+  /**
+   * Moves the clinical lifecycle. The backend owns this transition — the
+   * frontend reflects state, it never asserts it.
+   */
+  async setStatus(
+    consultationId: string,
+    status: ConsultationStatus,
+    actor: Doctor,
+  ): Promise<Consultation> {
+    const current = await this.getById(consultationId);
+    if (current.status === status) return current;
+
+    assertTransition(current.status, status);
+    const saved = await consultationRepository.save(
+      touch({ ...current, status }),
+    );
+
+    if (status === "REVIEW") {
+      await auditService.record({
+        consultationId: saved.id,
+        entityType: "CONSULTATION",
+        entityId: saved.id,
+        action: "CONSULTATION_READY_FOR_REVIEW",
+        summary: "Consultation moved to review",
+        doctor: actor,
+        previousValue: { status: current.status },
+        newValue: { status: saved.status },
+      });
+    }
+
+    return saved;
   },
 
   /**
@@ -255,12 +262,13 @@ export const consultationService = {
         appointment?.appointmentType ??
         "General Consultation",
       authorization,
-      status: "ACTIVE",
+      status: "READY",
       currentStep: "BRIEF",
       furthestStep: "BRIEF",
       completedSteps: [],
       caseContext: await buildInitialCaseContext(patientId, appointmentId),
-      differentialReviews: [],
+      // Decisions live in their own repository; the aggregate is hydrated on read.
+      doctorDecisions: [],
       diagnoses: [],
       assessmentNotes: "",
       investigations: [],
@@ -300,9 +308,13 @@ export const consultationService = {
     let next: Consultation = { ...current };
 
     if (body.status !== undefined) {
-      const status = body.status as ConsultationStatus;
-      assertTransition(current.status, status);
-      next.status = status;
+      if (!isConsultationStatus(body.status)) {
+        throw ApiError.validation("Unknown consultation status.", {
+          status: "Unknown consultation status.",
+        });
+      }
+      assertTransition(current.status, body.status);
+      next.status = body.status;
     }
 
     if (body.currentStep !== undefined) {
@@ -346,13 +358,13 @@ export const consultationService = {
     next = touch(next);
     const saved = await consultationRepository.save(next);
 
-    if (body.status === "READY_FOR_REVIEW" && current.status !== "READY_FOR_REVIEW") {
+    if (body.status === "REVIEW" && current.status !== "REVIEW") {
       await auditService.record({
         consultationId: saved.id,
         entityType: "CONSULTATION",
         entityId: saved.id,
         action: "CONSULTATION_READY_FOR_REVIEW",
-        summary: "Consultation marked ready for review",
+        summary: "Consultation moved to review",
         doctor: actor,
         previousValue: { status: current.status },
         newValue: { status: saved.status },
@@ -436,67 +448,6 @@ export const consultationService = {
       action: "CONSULTATION_NOTES_UPDATED",
       summary: "Consultation notes updated",
       doctor: actor,
-    });
-    return saved;
-  },
-
-  /**
-   * Records how the doctor dispositioned suggested differentials. This lives on
-   * the consultation because it is a doctor decision, not intelligence output.
-   */
-  async reviewDifferential(
-    consultationId: string,
-    body: Record<string, unknown>,
-    actor: Doctor,
-  ): Promise<Consultation> {
-    const current = assertMutable(await this.getById(consultationId));
-
-    const differentialId = requireText(
-      body.differentialId,
-      "differentialId",
-      "A differential is required.",
-    );
-    const condition = requireText(body.condition, "condition", "A condition is required.");
-    const disposition = body.disposition as DifferentialReview["disposition"];
-
-    if (
-      disposition !== "PENDING" &&
-      disposition !== "ACCEPTED_FOR_CONSIDERATION" &&
-      disposition !== "REJECTED" &&
-      disposition !== "IGNORED"
-    ) {
-      throw ApiError.validation("Unknown disposition.", {
-        disposition: "Unknown disposition.",
-      });
-    }
-
-    const review: DifferentialReview = {
-      differentialId,
-      condition,
-      disposition,
-      doctorNote: optionalText(body.doctorNote),
-      reviewedAt: new Date().toISOString(),
-    };
-
-    const differentialReviews = [
-      ...current.differentialReviews.filter((entry) => entry.differentialId !== differentialId),
-      review,
-    ];
-
-    const saved = await consultationRepository.save(
-      touchContent({ ...current, differentialReviews }),
-    );
-    await auditService.record({
-      consultationId: saved.id,
-      entityType: "DIFFERENTIAL",
-      entityId: differentialId,
-      action: "DIFFERENTIAL_REVIEWED",
-      summary: "Differential \"" + condition + "\" marked " + DISPOSITION_WORDING[disposition],
-      doctor: actor,
-      previousValue: current.differentialReviews.find(
-        (entry) => entry.differentialId === differentialId,
-      ),
-      newValue: review,
     });
     return saved;
   },
@@ -844,9 +795,13 @@ export const consultationService = {
     return {
       consultation,
       patientContext,
-      consideredDifferentials: consultation.differentialReviews
-        .filter((review) => review.disposition === "ACCEPTED_FOR_CONSIDERATION")
-        .sort((a, b) => a.condition.localeCompare(b.condition)),
+      acceptedConsiderations: consultation.doctorDecisions
+        .filter(
+          (decision) =>
+            decision.subject === "CLINICAL_CONSIDERATION" &&
+            decision.outcome === "ACCEPTED_FOR_CONSIDERATION",
+        )
+        .sort((a, b) => a.subjectLabel.localeCompare(b.subjectLabel)),
       finalization,
     };
   },

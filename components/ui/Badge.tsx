@@ -24,12 +24,21 @@ export interface BadgeProps {
   tone?: Tone;
   withDot?: boolean;
   className?: string;
+  /** Native tooltip, used where a compact value needs an explanation. */
+  title?: string;
   children: ReactNode;
 }
 
-export function Badge({ tone = "neutral", withDot = false, className, children }: BadgeProps) {
+export function Badge({
+  tone = "neutral",
+  withDot = false,
+  className,
+  title,
+  children,
+}: BadgeProps) {
   return (
     <span
+      title={title}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5",
         "text-xs font-medium whitespace-nowrap",

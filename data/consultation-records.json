@@ -218,8 +218,6 @@
         "recordedAt": "2026-08-27T10:12:00.000Z"
       }
     ],
-    "aiRecommendations": null,
-    "differentialReviews": [],
     "finalAssessment": {
       "primary": {
         "id": "dx-s1",
@@ -300,7 +298,15 @@
     "status": "FINALIZED",
     "version": 1,
     "amendedFromRecordId": null,
-    "supersededByRecordId": null
+    "supersededByRecordId": null,
+    "transcript": [],
+    "clinicalIntelligence": {
+      "status": "UNAVAILABLE",
+      "provenance": null,
+      "intelligence": null,
+      "capturedAt": "2026-08-27T10:32:00.000Z"
+    },
+    "doctorDecisions": []
   },
   {
     "id": "rec-seed-002",
@@ -532,8 +538,6 @@
         "recordedAt": "2026-08-05T09:38:00.000Z"
       }
     ],
-    "aiRecommendations": null,
-    "differentialReviews": [],
     "finalAssessment": {
       "primary": {
         "id": "dx-s2",
@@ -638,6 +642,14 @@
     "status": "FINALIZED",
     "version": 1,
     "amendedFromRecordId": null,
-    "supersededByRecordId": null
+    "supersededByRecordId": null,
+    "transcript": [],
+    "clinicalIntelligence": {
+      "status": "UNAVAILABLE",
+      "provenance": null,
+      "intelligence": null,
+      "capturedAt": "2026-08-05T10:05:00.000Z"
+    },
+    "doctorDecisions": []
   }
 ]

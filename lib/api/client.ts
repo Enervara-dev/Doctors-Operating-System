@@ -49,6 +49,25 @@ interface RequestOptions {
   anonymous?: boolean;
 }
 
+/**
+ * Issues an authenticated request and returns the raw `Response`.
+ *
+ * Used by the live event stream, which consumes a body stream rather than a
+ * JSON envelope. It shares the same token provider, so streaming is
+ * authenticated exactly like every other call.
+ */
+export function apiStream(path: string, signal?: AbortSignal): Promise<Response> {
+  const token = getToken();
+  return fetch(`/api${path}`, {
+    headers: {
+      Accept: "text/event-stream",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    signal,
+    cache: "no-store",
+  });
+}
+
 export async function apiRequest<TData>(
   path: string,
   options: RequestOptions = {},

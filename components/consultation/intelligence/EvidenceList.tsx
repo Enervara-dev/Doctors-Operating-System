@@ -8,6 +8,7 @@ const KIND_LABELS: Record<EvidenceKind, string> = {
   MEDICATION: "Medication",
   INVESTIGATION: "Investigation",
   DEMOGRAPHIC: "Demographic",
+  RISK_FACTOR: "Risk factor",
 };
 
 export interface EvidenceListProps {

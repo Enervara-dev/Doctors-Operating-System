@@ -26,7 +26,9 @@ export const AUDIT_ACTION_META: Record<AuditAction, { label: string; icon: Lucid
   CONSULTATION_STARTED: { label: "Consultation started", icon: Stethoscope },
   CONSULTATION_UPDATED: { label: "Consultation updated", icon: Pencil },
   CONSULTATION_NOTES_UPDATED: { label: "Notes updated", icon: Pencil },
-  DIFFERENTIAL_REVIEWED: { label: "Differential reviewed", icon: NotebookPen },
+  DOCTOR_DECISION_RECORDED: { label: "Doctor decision recorded", icon: NotebookPen },
+  LIVE_SESSION_STARTED: { label: "Live consultation started", icon: Stethoscope },
+  LIVE_SESSION_ENDED: { label: "Live consultation ended", icon: Stethoscope },
   DIAGNOSIS_SELECTED: { label: "Assessment recorded", icon: NotebookPen },
   INVESTIGATION_ADDED: { label: "Investigation added", icon: FlaskConical },
   INVESTIGATION_UPDATED: { label: "Investigation updated", icon: FlaskConical },
@@ -36,7 +38,7 @@ export const AUDIT_ACTION_META: Record<AuditAction, { label: string; icon: Lucid
   MEDICATION_REMOVED: { label: "Medication removed", icon: Pill },
   TREATMENT_UPDATED: { label: "Treatment updated", icon: Pill },
   FOLLOW_UP_CREATED: { label: "Follow-up planned", icon: CalendarClock },
-  CONSULTATION_READY_FOR_REVIEW: { label: "Marked ready for review", icon: CircleCheck },
+  CONSULTATION_READY_FOR_REVIEW: { label: "Moved to review", icon: CircleCheck },
   CONSULTATION_FINALIZED: { label: "Consultation finalized", icon: ShieldCheck },
   RECORD_CREATED: { label: "Record created", icon: FileCheck2 },
 };
@@ -44,7 +46,7 @@ export const AUDIT_ACTION_META: Record<AuditAction, { label: string; icon: Lucid
 export const AUDIT_ACTOR_LABELS = {
   DOCTOR: "Doctor",
   SYSTEM: "System",
-  AI: "Clinical intelligence",
+  CLINICAL_INTELLIGENCE: "Clinical Intelligence",
 } as const;
 
 export function recordHref(recordId: string): string {

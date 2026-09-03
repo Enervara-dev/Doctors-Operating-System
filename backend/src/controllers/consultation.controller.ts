@@ -54,13 +54,6 @@ export const consultationController = {
     );
   },
 
-  async reviewDifferential(req: Request, res: Response): Promise<void> {
-    sendSuccess(
-      res,
-      await consultationService.reviewDifferential(consultationId(req), body(req), actor(req)),
-    );
-  },
-
   async setDiagnoses(req: Request, res: Response): Promise<void> {
     sendSuccess(
       res,

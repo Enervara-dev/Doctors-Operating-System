@@ -1,7 +1,6 @@
 import type {
   Allergy,
   AuthorizationStatus,
-  ClinicalIntelligence,
   CurrentMedication,
   MedicalHistoryItem,
   PreviousConsultation,
@@ -54,15 +53,4 @@ export interface CaseIntakeRecord {
   historyOfPresentIllness: string;
   symptoms: Symptom[];
   symptomTimeline: SymptomTimelineEvent[];
-}
-
-type IntelligencePayload = Omit<
-  ClinicalIntelligence,
-  "consultationId" | "generatedAt" | "provenance"
->;
-
-/** AI FIXTURE / TEST DATA ONLY — never served by the default flow. */
-export interface ClinicalIntelligenceFixtures {
-  full: IntelligencePayload;
-  partial: IntelligencePayload;
 }

@@ -8,7 +8,6 @@ import type {
   ConsultationStep,
   ConsultationSummary,
   CurrentCaseContext,
-  DifferentialDisposition,
   FollowUpPlan,
   InvestigationUrgency,
   TreatmentPlan,
@@ -48,13 +47,6 @@ export interface MedicationInput {
   duration: string;
   route?: string | null;
   instructions?: string | null;
-}
-
-export interface DifferentialReviewInput {
-  differentialId: string;
-  condition: string;
-  disposition: DifferentialDisposition;
-  doctorNote?: string | null;
 }
 
 /** Every consultation write returns the whole updated aggregate. */
@@ -97,13 +89,6 @@ export const consultationsApi = {
     return apiRequest<Consultation>(endpoints.consultations.notes(id), {
       method: "POST",
       body: notes,
-    });
-  },
-
-  reviewDifferential(id: string, review: DifferentialReviewInput): Promise<Consultation> {
-    return apiRequest<Consultation>(endpoints.consultations.differentialReviews(id), {
-      method: "POST",
-      body: review,
     });
   },
 

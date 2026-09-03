@@ -1,21 +1,31 @@
+import type { DoctorDecision } from "./doctor-decision";
 import type { PatientContext } from "./patient-context";
 import type { AuthorizationSnapshot, FinalizationReadiness } from "./record";
 
 /**
- * Explicit lifecycle. Progression is a state machine, never a set of booleans:
- * NOT_STARTED -> ACTIVE -> DRAFT <-> READY_FOR_REVIEW -> FINALIZED.
- * FINALIZED is terminal in Phase 2; amendments are Phase 3.
+ * Explicit clinical lifecycle, owned by the backend. Progression is a state
+ * machine, never a set of booleans:
+ *
+ *   NOT_STARTED -> READY -> LIVE <-> PAUSED -> REVIEW -> FINALIZING -> FINALIZED
+ *
+ * `REVIEW` may return to `LIVE` if the doctor resumes the consultation.
+ * `FINALIZED` is terminal; amendment is modelled but not implemented.
+ *
+ * Distinct from `LiveSessionState`, which describes whether the platform is
+ * currently listening. A session can drop without the consultation changing.
  */
 export type ConsultationStatus =
   | "NOT_STARTED"
-  | "ACTIVE"
-  | "DRAFT"
-  | "READY_FOR_REVIEW"
+  | "READY"
+  | "LIVE"
+  | "PAUSED"
+  | "REVIEW"
+  | "FINALIZING"
   | "FINALIZED";
 
 export type ConsultationStep =
   | "BRIEF"
-  | "ACTIVE_CONSULTATION"
+  | "LIVE_CONSULTATION"
   | "ASSESSMENT"
   | "INVESTIGATIONS"
   | "DIAGNOSIS"
@@ -133,25 +143,6 @@ export interface FollowUpPlan {
   escalationInstructions: string;
 }
 
-/** What the doctor decided about a suggested differential. */
-export type DifferentialDisposition =
-  | "PENDING"
-  | "ACCEPTED_FOR_CONSIDERATION"
-  | "REJECTED"
-  | "IGNORED";
-
-/**
- * The doctor's response to one AI differential. Lives on the consultation —
- * the doctor's record — never inside the intelligence payload itself.
- */
-export interface DifferentialReview {
-  differentialId: string;
-  condition: string;
-  disposition: DifferentialDisposition;
-  doctorNote: string | null;
-  reviewedAt: string;
-}
-
 export interface Consultation {
   id: string;
   /** Short human reference shown in the header, e.g. "C-1024". */
@@ -173,7 +164,11 @@ export interface Consultation {
 
   caseContext: CurrentCaseContext;
 
-  differentialReviews: DifferentialReview[];
+  /**
+   * What the doctor decided about Clinical Intelligence output. Recorded here,
+   * on the doctor's record — never written back into the platform payload.
+   */
+  doctorDecisions: DoctorDecision[];
   diagnoses: Diagnosis[];
   assessmentNotes: string;
   investigations: SelectedInvestigation[];
@@ -192,8 +187,8 @@ export interface Consultation {
 export interface ConsultationSummary {
   consultation: Consultation;
   patientContext: PatientContext;
-  /** Differentials the doctor explicitly kept in play, for the written record. */
-  consideredDifferentials: DifferentialReview[];
+  /** Considerations the doctor explicitly kept in play, for the written record. */
+  acceptedConsiderations: DoctorDecision[];
   /** Server-authoritative view of whether this consultation can be finalized. */
   finalization: FinalizationReadiness;
 }

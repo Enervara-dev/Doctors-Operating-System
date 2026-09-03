@@ -8,7 +8,7 @@ import type { ConsultationStep } from "../domain/types";
  */
 export const STEP_ORDER: readonly ConsultationStep[] = [
   "BRIEF",
-  "ACTIVE_CONSULTATION",
+  "LIVE_CONSULTATION",
   "ASSESSMENT",
   "INVESTIGATIONS",
   "DIAGNOSIS",

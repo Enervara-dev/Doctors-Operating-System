@@ -1,14 +1,18 @@
-import type { ClinicalIntelligence, IntelligenceAvailability } from "./clinical-intelligence";
+import type {
+  ClinicalIntelligence,
+  ClinicalIntelligenceStatus,
+} from "./clinical-intelligence";
 import type {
   ClinicalFinding,
   CurrentCaseContext,
   Diagnosis,
-  DifferentialReview,
   FollowUpPlan,
   Medication,
   SelectedInvestigation,
   TreatmentPlan,
 } from "./consultation";
+import type { DoctorDecision } from "./doctor-decision";
+import type { TranscriptUtterance } from "./transcript";
 import type { AccessMethod, AuthorizationStatus } from "./patient-access";
 import type {
   Allergy,
@@ -62,11 +66,12 @@ export interface DoctorAssessment {
 }
 
 /**
- * What the intelligence layer offered during this consultation, preserved for
- * audit. Held apart from `finalAssessment` so the two can never be conflated.
+ * What the Clinical Intelligence Platform offered during this consultation,
+ * preserved for audit. Held apart from `finalAssessment` so platform output and
+ * doctor judgement can never be conflated when the record is read back.
  */
-export interface AiRecommendationSnapshot {
-  availability: IntelligenceAvailability;
+export interface ClinicalIntelligenceSnapshot {
+  status: ClinicalIntelligenceStatus;
   provenance: "FIXTURE" | "SERVICE" | null;
   intelligence: ClinicalIntelligence | null;
   capturedAt: string;
@@ -93,9 +98,16 @@ export interface ConsultationRecord {
   consultationContext: ConsultationContextSnapshot;
   clinicalFindings: ClinicalFinding[];
 
-  /** AI history, kept strictly separate from the decisions below. */
-  aiRecommendations: AiRecommendationSnapshot | null;
-  differentialReviews: DifferentialReview[];
+  /**
+   * The speaker-labelled transcript as it stood at finalization. Copied, so the
+   * record remains readable independently of the live session.
+   */
+  transcript: TranscriptUtterance[];
+
+  /** Platform output, kept strictly separate from the decisions below. */
+  clinicalIntelligence: ClinicalIntelligenceSnapshot | null;
+  /** How the doctor dispositioned that output. */
+  doctorDecisions: DoctorDecision[];
 
   finalAssessment: DoctorAssessment;
   investigations: SelectedInvestigation[];

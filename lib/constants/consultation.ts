@@ -21,7 +21,7 @@ import type { Tone } from "./appointment";
  */
 export const CONSULTATION_STEPS: readonly ConsultationStep[] = [
   "BRIEF",
-  "ACTIVE_CONSULTATION",
+  "LIVE_CONSULTATION",
   "ASSESSMENT",
   "INVESTIGATIONS",
   "DIAGNOSIS",
@@ -49,11 +49,12 @@ export const CONSULTATION_STEP_META: Record<ConsultationStep, StepMeta> = {
     description: "What is already known about this patient and this visit.",
     icon: ClipboardList,
   },
-  ACTIVE_CONSULTATION: {
-    label: "Active consultation",
-    shortLabel: "Consultation",
-    slug: "consultation",
-    description: "Record the history and your notes for this visit.",
+  LIVE_CONSULTATION: {
+    label: "Live consultation",
+    shortLabel: "Live",
+    slug: "live",
+    description:
+      "The consultation as it happens: transcript, clinical context and Clinical Intelligence.",
     icon: Stethoscope,
   },
   ASSESSMENT: {
@@ -155,9 +156,11 @@ interface StatusMeta {
 
 export const CONSULTATION_STATUS_META: Record<ConsultationStatus, StatusMeta> = {
   NOT_STARTED: { label: "Not started", tone: "neutral" },
-  ACTIVE: { label: "Active", tone: "primary" },
-  DRAFT: { label: "Draft", tone: "info" },
-  READY_FOR_REVIEW: { label: "Ready for review", tone: "warning" },
+  READY: { label: "Ready", tone: "neutral" },
+  LIVE: { label: "Live", tone: "error" },
+  PAUSED: { label: "Paused", tone: "warning" },
+  REVIEW: { label: "In review", tone: "info" },
+  FINALIZING: { label: "Finalizing", tone: "info" },
   FINALIZED: { label: "Finalized", tone: "success" },
 };
 
@@ -200,15 +203,4 @@ export const SYMPTOM_SEVERITY_LABELS = {
   MILD: "Mild",
   MODERATE: "Moderate",
   SEVERE: "Severe",
-} as const;
-
-/**
- * How the doctor has dispositioned a suggested differential. Deliberately never
- * phrased as confirming a diagnosis — accepting keeps it under consideration.
- */
-export const DISPOSITION_META = {
-  PENDING: { label: "Not reviewed", tone: "neutral" as Tone },
-  ACCEPTED_FOR_CONSIDERATION: { label: "Accepted for consideration", tone: "primary" as Tone },
-  REJECTED: { label: "Rejected", tone: "error" as Tone },
-  IGNORED: { label: "Ignored", tone: "neutral" as Tone },
 } as const;

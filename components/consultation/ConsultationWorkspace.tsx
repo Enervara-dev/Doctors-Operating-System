@@ -9,7 +9,6 @@ import { StepFooter } from "./StepFooter";
 import { StepNav } from "./StepNav";
 import { StepProgress } from "./StepProgress";
 import { PatientContextPanel } from "./context/PatientContextPanel";
-import { ClinicalIntelligencePanel } from "./intelligence/ClinicalIntelligencePanel";
 import { Alert } from "@/components/ui/Alert";
 import { buttonVariants } from "@/components/ui/Button";
 import { Disclosure } from "@/components/ui/Disclosure";
@@ -135,6 +134,11 @@ export function ConsultationWorkspace({
 
   if (!consultation || status !== "ready") return <WorkspaceSkeleton />;
 
+  // During the live consultation the transcript and Clinical Intelligence are
+  // the priority, so the workspace gives them the full width and moves patient
+  // context into the collapsible section rather than a permanent column.
+  const isLiveStep = step === "LIVE_CONSULTATION";
+
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <ConsultationHeader
@@ -144,7 +148,13 @@ export function ConsultationWorkspace({
       <AllergyBanner allergies={criticalAllergies} />
 
       <div className="mx-auto w-full max-w-[100rem] flex-1 px-4 py-5 sm:px-6 sm:py-6">
-        <div className="grid gap-5 lg:grid-cols-[13.5rem_minmax(0,1fr)] xl:grid-cols-[13.5rem_minmax(0,1fr)_20rem]">
+        <div
+          className={
+            isLiveStep
+              ? "grid gap-5 lg:grid-cols-[13.5rem_minmax(0,1fr)]"
+              : "grid gap-5 lg:grid-cols-[13.5rem_minmax(0,1fr)] xl:grid-cols-[13.5rem_minmax(0,1fr)_20rem]"
+          }
+        >
           <div className="hidden lg:block">
             <div className="sticky top-24">
               <StepNav consultation={consultation} />
@@ -166,14 +176,14 @@ export function ConsultationWorkspace({
 
             {children}
 
-            <ClinicalIntelligencePanel consultation={consultation} step={step} />
+            
 
             {/*
               Below xl the context column has nowhere to sit, so it becomes a
               collapsible section here — after the clinical task, never in front
               of it. Critical allergies stay in the banner regardless.
             */}
-            <div className="xl:hidden">
+            <div className={isLiveStep ? "" : "xl:hidden"}>
               <div className="rounded-card border border-border-default bg-surface px-4 py-3">
                 <Disclosure
                   summary={
@@ -195,7 +205,7 @@ export function ConsultationWorkspace({
             <StepFooter consultation={consultation} step={step} />
           </div>
 
-          <div className="hidden xl:block">
+          <div className={isLiveStep ? "hidden" : "hidden xl:block"}>
             <div className="sticky top-24 max-h-[calc(100dvh-8rem)] overflow-y-auto">
               <PatientContextPanel
                 context={patientContext}

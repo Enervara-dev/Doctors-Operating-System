@@ -64,8 +64,12 @@ export function DiagnosisStep() {
 
   if (!consultation) return null;
 
-  const acceptedDifferentials = consultation.differentialReviews.filter(
-    (review) => review.disposition === "ACCEPTED_FOR_CONSIDERATION",
+  // Considerations the doctor kept in play. Accepting one never made it an
+  // assessment; copying it across below is a separate, explicit action.
+  const acceptedConsiderations = consultation.doctorDecisions.filter(
+    (decision) =>
+      decision.subject === "CLINICAL_CONSIDERATION" &&
+      decision.outcome === "ACCEPTED_FOR_CONSIDERATION",
   );
   const recordedConditions = new Set(
     diagnoses.map((diagnosis) => diagnosis.condition.trim().toLowerCase()),
@@ -201,25 +205,25 @@ export function DiagnosisStep() {
         </div>
       </StepSection>
 
-      {acceptedDifferentials.length > 0 ? (
+      {acceptedConsiderations.length > 0 ? (
         <StepSection
-          title="Differentials you accepted for consideration"
+          title="Considerations you accepted"
           description="Kept in play during this consultation. Accepting one never made it your assessment — copy it across only if you decide it belongs there."
         >
           <ul className="space-y-2.5">
-            {acceptedDifferentials.map((review) => {
+            {acceptedConsiderations.map((review) => {
               const alreadyRecorded = recordedConditions.has(
-                review.condition.trim().toLowerCase(),
+                review.subjectLabel.trim().toLowerCase(),
               );
               return (
                 <li
-                  key={review.differentialId}
+                  key={review.subjectId}
                   className="flex flex-col gap-2 rounded-control border border-border-default bg-surface p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-text">{review.condition}</p>
-                    {review.doctorNote ? (
-                      <p className="mt-0.5 text-xs text-text-secondary">{review.doctorNote}</p>
+                    <p className="text-sm font-medium text-text">{review.subjectLabel}</p>
+                    {review.note ? (
+                      <p className="mt-0.5 text-xs text-text-secondary">{review.note}</p>
                     ) : null}
                   </div>
                   <Button
@@ -229,8 +233,8 @@ export function DiagnosisStep() {
                     className="shrink-0"
                     onClick={() =>
                       add({
-                        condition: review.condition,
-                        derivedFromDifferentialId: review.differentialId,
+                        condition: review.subjectLabel,
+                        derivedFromDifferentialId: review.subjectId,
                       })
                     }
                   >
