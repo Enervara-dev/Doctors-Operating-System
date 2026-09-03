@@ -5,7 +5,12 @@
  * `/api/*` to the Express service over loopback, so the API is never exposed
  * directly and there is no cross-origin hop for the live event stream.
  *
- *   $PORT ─▶ next start ──(rewrite)──▶ http://localhost:$API_PORT ─▶ Express
+ *   $PORT ─▶ next start ──(rewrite)──▶ http://127.0.0.1:$API_PORT ─▶ Express
+ *
+ * Express is bound to `127.0.0.1`, not just to a different port. A platform
+ * proxy discovers a service by looking for a listener on a public interface, so
+ * a second public listener in the same container can win the domain and serve
+ * API 404s at `/`. Loopback makes that impossible rather than unlikely.
  *
  * Both children are spawned through `process.execPath` rather than a shell, so
  * there is no dependency on `concurrently` surviving a production install and
@@ -19,12 +24,20 @@ import path from "node:path";
 const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+/** The public port. This belongs to Next.js and to nothing else. */
 const webPort = process.env.PORT ?? "3000";
-/**
- * The API's port is internal. It must stay off `$PORT`, which belongs to the
- * web process, and it must match the `API_ORIGIN` the rewrite was built with.
- */
+/** Internal only. Must match the `API_ORIGIN` the rewrite was built with. */
 const apiPort = process.env.API_PORT ?? "4000";
+const apiHost = "127.0.0.1";
+
+if (webPort === apiPort) {
+  console.error(
+    `[start] PORT and API_PORT are both ${webPort}. The public port belongs to ` +
+      `Next.js; set API_PORT to a different internal port (and rebuild with a ` +
+      `matching API_ORIGIN).`,
+  );
+  process.exit(1);
+}
 
 const children = [];
 let shuttingDown = false;
@@ -58,9 +71,15 @@ function stop(code) {
   setTimeout(() => process.exit(code), 3000).unref();
 }
 
+console.log(
+  `[start] web on 0.0.0.0:${webPort} (public) · api on ${apiHost}:${apiPort} (loopback only)`,
+);
+
 start("api", path.join(root, "backend", "dist", "backend", "src", "server.js"), [], {
-  PORT: apiPort,
+  API_HOST: apiHost,
   API_PORT: apiPort,
+  // Overridden so an inherited platform `PORT` can never reach the API.
+  PORT: apiPort,
 });
 
 start("web", require.resolve("next/dist/bin/next"), ["start", "--port", webPort], {

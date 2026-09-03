@@ -910,7 +910,8 @@ loopback, so the API is never exposed directly and the live event stream never l
 the container until it reaches the browser.
 
 ```
-$PORT ─▶ next start ──(rewrite)──▶ http://localhost:$API_PORT ─▶ Express
+$PORT ─▶ next start ──(rewrite)──▶ http://127.0.0.1:$API_PORT ─▶ Express
+         (0.0.0.0, public)                   (loopback only)
 ```
 
 `railway.json` already declares the build, start command and health check. Point a
@@ -920,15 +921,26 @@ Railway project at the repo and it will:
 npm ci  →  npm run build  →  npm start  →  health check GET /api/health
 ```
 
-`npm start` runs `scripts/start-production.mjs`, which spawns both processes, forces the
-API onto `API_PORT` so it cannot collide with `$PORT`, forwards `SIGTERM`, and exits if
-either half dies so Railway restarts a whole container rather than serving half an app.
+`npm start` runs `scripts/start-production.mjs`, which spawns both processes, binds
+Express to `127.0.0.1:$API_PORT`, refuses to start if `API_PORT` collides with `$PORT`,
+forwards `SIGTERM`, and exits if either half dies so Railway restarts a whole container
+rather than serving half an app.
+
+> **Express is bound to loopback, not merely to a different port.** A platform proxy
+> discovers a service by looking for a listener on a public interface, so a second
+> public listener in the same container can win the domain and answer `/` with an API
+> 404. Loopback makes that impossible instead of unlikely — and it is why a successful
+> `GET /api/health` on the public port proves Next.js owns `$PORT` and the rewrite
+> works. If a deployment ever serves `NOT_FOUND` at `/`, check the service's **domain
+> target port** and any **custom start command** in the Railway dashboard: a dashboard
+> start command overrides `railway.json`, and a target port pinned to `4000` by an
+> earlier deploy will keep routing there.
 
 **Variables to set on the service** (all optional — these are the defaults):
 
 | Variable | Set it to | Why |
 | -------- | --------- | --- |
-| `API_PORT` | leave unset | Internal only. If you change it, rebuild with a matching `API_ORIGIN` |
+| `API_PORT` | leave unset | Internal, loopback only. If you change it, rebuild with a matching `API_ORIGIN` |
 | `API_ORIGIN` | leave unset | **Build-time.** Must match `API_PORT`; the default pair already agrees |
 | `MOCK_LATENCY_MS` | `0` on a demo | Removes the artificial delay that keeps loading states visible locally |
 | `LIVE_TICK_SCALE` | `1`, or `0.5` for a faster demo | Speed of the scripted live session |
@@ -954,7 +966,8 @@ behind a private URL or an access-controlled environment:
 ### Deploying as two services instead
 
 If you split the API onto its own Railway service, it must listen on Railway's `$PORT`
-(the launcher is not used in that topology — start it with `npm run start:api`), and the
+(the launcher is not used in that topology — start it with `npm run start:api`, which
+binds `0.0.0.0` because `API_HOST` is unset), and the
 web service must be **built** with `API_ORIGIN` pointing at the API's private URL. That
 value is baked into the route manifest at build time, so changing it later requires a
 rebuild, not a restart.
@@ -968,6 +981,7 @@ rebuild, not a restart.
 | `API_ORIGIN`               | `http://localhost:4000` | Web     | Rewrite target for `/api/*`                                    |
 | `PORT`                     | `3000` web / `4000` API | Both    | Web listen port. In a single-container deploy the launcher gives this to Next and forces the API onto `API_PORT` |
 | `API_PORT`                 | `4000`                  | API     | Internal API port in a single-container deploy                 |
+| `API_HOST`                 | `0.0.0.0`               | API     | Interface Express binds. The launcher sets `127.0.0.1` so the API is never publicly routable |
 | `CORS_ORIGIN`              | `*`                     | API     | Allowed origins for direct API access                          |
 | `MOCK_LATENCY_MS`          | `220`                   | API     | Simulated latency on mock reads                                |
 | `CLINICAL_INTELLIGENCE_URL`| *(unset)*               | API     | Base URL of the Clinical Intelligence Platform. Unset → the fixture adapter, reported as fixture-backed |

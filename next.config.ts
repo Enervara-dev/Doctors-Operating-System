@@ -5,7 +5,11 @@ import type { NextConfig } from "next";
  * Express service. That keeps the client free of CORS concerns and lets the API
  * move behind a gateway later without touching frontend code.
  */
-const API_ORIGIN = process.env.API_ORIGIN ?? "http://localhost:4000";
+/**
+ * `127.0.0.1` rather than `localhost`: in a container the API binds loopback
+ * IPv4 only, and `localhost` can resolve to `::1` first.
+ */
+const API_ORIGIN = process.env.API_ORIGIN ?? "http://127.0.0.1:4000";
 
 const nextConfig: NextConfig = {
   async rewrites() {
