@@ -1,39 +1,63 @@
-import type { Appointment } from "../domain/types";
-import { compareIsoDates } from "../mock/date";
-import { db, rebaseAppointments } from "../mock/db";
+import type { Appointment, AppointmentBoard, AppointmentWithPatient } from "../domain/types";
+import { patientApi } from "../lib/patient-api";
+import { toAppointment, toPatientSummary, type RemoteBoard } from "../lib/remote-mapping";
 
-function byDateThenTime(a: Appointment, b: Appointment): number {
-  const byDate = compareIsoDates(a.date, b.date);
-  return byDate !== 0 ? byDate : a.time.localeCompare(b.time);
+/**
+ * The doctor's schedule, read from the patient platform.
+ *
+ * The board arrives already bucketed into today / upcoming / past with its
+ * counts, because that split depends on the server's current day and the
+ * platform is the one holding the clock and the rows. This service used to
+ * re-derive it from a flat list; doing that in two places is how two screens
+ * come to disagree about what "today" means.
+ */
+
+function board(): Promise<RemoteBoard> {
+  return patientApi.getOnce<RemoteBoard>("/api/doctor/appointments");
 }
 
-/** Fixture rows rebased onto the current day, recomputed on every read. */
-function appointments(): Appointment[] {
-  return rebaseAppointments(db.appointmentSeed);
+function join(remote: RemoteBoard["today"]): AppointmentWithPatient[] {
+  return remote.map((row) => ({
+    ...toAppointment(row),
+    patient: toPatientSummary(row.patient),
+  }));
 }
 
 export const appointmentRepository = {
-  async findByDoctorId(doctorId: string): Promise<Appointment[]> {
-    return appointments()
-      .filter((appointment) => appointment.doctorId === doctorId)
-      .sort(byDateThenTime);
+  async getBoard(): Promise<AppointmentBoard> {
+    const remote = await board();
+    return {
+      today: join(remote.today),
+      upcoming: join(remote.upcoming),
+      past: join(remote.past),
+      summary: remote.summary,
+    };
   },
 
-  async findById(id: string): Promise<Appointment | null> {
-    return appointments().find((appointment) => appointment.id === id) ?? null;
-  },
-
-  async findUpcomingByPatientId(patientId: string): Promise<Appointment | null> {
-    const candidates = appointments()
-      .filter((appointment) => appointment.patientId === patientId)
-      .sort(byDateThenTime);
-    return (
-      candidates.find(
-        (appointment) =>
-          appointment.status === "READY" ||
-          appointment.status === "IN_PROGRESS" ||
-          appointment.status === "UPCOMING",
-      ) ?? null
+  async findById(id: string): Promise<AppointmentWithPatient | null> {
+    const { appointment } = await patientApi.getOnce<{ appointment: RemoteBoard["today"][number] }>(
+      `/api/doctor/appointments/${encodeURIComponent(id)}`,
     );
+    return appointment
+      ? { ...toAppointment(appointment), patient: toPatientSummary(appointment.patient) }
+      : null;
+  },
+
+  /**
+   * The patient's next active appointment with this doctor, taken from the
+   * board that has already been fetched. It is only ever asked for while
+   * rendering the schedule, so this costs nothing extra.
+   */
+  async findUpcomingByPatientId(patientId: string): Promise<Appointment | null> {
+    const remote = await board();
+    const candidates = [...remote.today, ...remote.upcoming].filter(
+      (row) =>
+        row.patientId === patientId &&
+        (row.status === "CHECKED_IN" ||
+          row.status === "IN_CONSULTATION" ||
+          row.status === "CONFIRMED" ||
+          row.status === "REQUESTED"),
+    );
+    return candidates.length > 0 ? toAppointment(candidates[0]) : null;
   },
 };

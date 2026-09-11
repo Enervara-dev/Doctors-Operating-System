@@ -1,6 +1,26 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Accepts either a calendar date (`2026-09-04`) or a full timestamp
+ * (`2026-09-04T10:30:00.000Z`), and always returns local midnight on the day
+ * those denote.
+ *
+ * Both forms occur because both exist in the record: `report_date` and
+ * `admitted_on` are calendar dates, while `created_at` and `consulted_at` are
+ * instants. Splitting on `-` handled only the first, so a timestamp produced
+ * `NaN` for the day and rendered as "Invalid Date".
+ *
+ * A bare calendar date is deliberately NOT passed to `new Date(string)`, which
+ * parses it as UTC midnight and renders the previous day anywhere west of
+ * Greenwich — the same off-by-one the database pool avoids by returning DATE
+ * columns as strings.
+ */
 function parseIsoDate(isoDate: string): Date {
+  if (isoDate.includes("T")) {
+    const at = new Date(isoDate);
+    if (Number.isNaN(at.getTime())) return at;
+    return new Date(at.getFullYear(), at.getMonth(), at.getDate());
+  }
   const [year, month, day] = isoDate.split("-").map(Number);
   return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);
 }

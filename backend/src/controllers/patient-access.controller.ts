@@ -10,7 +10,7 @@ export const patientAccessController = {
   },
 
   async validateLink(req: Request, res: Response): Promise<void> {
-    const grant = await patientAccessService.validateSharingLink(req.body?.link);
+    const grant = await patientAccessService.validateSharingLink();
     sendSuccess(res, grant);
   },
 

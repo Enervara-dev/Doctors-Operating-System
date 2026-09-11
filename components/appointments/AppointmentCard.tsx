@@ -12,9 +12,10 @@ import { formatRelativeDay, formatTime } from "@/lib/utils/date";
 import type { AppointmentStatus, AppointmentWithPatient } from "@/types";
 
 const ACTION_LABELS: Partial<Record<AppointmentStatus, string>> = {
-  READY: "Start consultation",
-  IN_PROGRESS: "Resume",
-  UPCOMING: "Open patient",
+  CHECKED_IN: "Start consultation",
+  IN_CONSULTATION: "Resume",
+  CONFIRMED: "Open patient",
+  REQUESTED: "Open patient",
 };
 
 export interface AppointmentCardProps {
@@ -87,7 +88,7 @@ export function AppointmentCard({
         {actionLabel ? (
           <div className="shrink-0 sm:self-center">
             <Button
-              variant={status === "READY" ? "primary" : "secondary"}
+              variant={status === "CHECKED_IN" ? "primary" : "secondary"}
               size="sm"
               fullWidth
               isLoading={isPending}

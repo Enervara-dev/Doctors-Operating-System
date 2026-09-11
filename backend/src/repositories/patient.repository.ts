@@ -1,20 +1,15 @@
 import type { Patient } from "../domain/types";
-import { db } from "../mock/db";
+import { patientContextRepository } from "./patient-context.repository";
 
+/**
+ * Patients.
+ *
+ * There is exactly one way to read a patient — through the brief, behind the
+ * platform's access check — so this delegates rather than opening a second
+ * path that could return a record without one.
+ */
 export const patientRepository = {
   async findById(id: string): Promise<Patient | null> {
-    return db.patients.find((patient) => patient.id === id) ?? null;
-  },
-
-  async findManyByIds(ids: readonly string[]): Promise<Map<string, Patient>> {
-    const wanted = new Set(ids);
-    const entries = db.patients
-      .filter((patient) => wanted.has(patient.id))
-      .map((patient) => [patient.id, patient] as const);
-    return new Map(entries);
-  },
-
-  async list(): Promise<Patient[]> {
-    return [...db.patients];
+    return patientContextRepository.findPatient(id);
   },
 };

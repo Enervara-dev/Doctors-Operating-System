@@ -1,138 +1,58 @@
-import type { AccessMethod, AuthorizationStatus, PatientAccessGrant } from "../domain/types";
+import type { PatientAccessGrant } from "../domain/types";
 import { ApiError } from "../lib/api-error";
-import { simulateLatency } from "../lib/delay";
-import { createId } from "../lib/id";
-import { accessGrantRepository } from "../repositories/access-grant.repository";
-import { minutesFromNow } from "../mock/date";
 import { patientAccessRepository } from "../repositories/patient-access.repository";
-import { patientRepository } from "../repositories/patient.repository";
-import { appointmentService } from "./appointment.service";
-import { appointmentRepository } from "../repositories/appointment.repository";
 
 /**
- * Phase 1 authorization is simulated. Grants are derived from fixtures and are
- * not enforced anywhere. The real implementation will verify patient consent,
- * check token signatures and write an audit entry per grant.
+ * Getting permission to open a patient's record.
+ *
+ * Authorization is decided by the patient platform, which owns the codes, the
+ * grants and the patient's consent. This service validates the shape of what
+ * the doctor typed and forwards it; it never decides that access was granted,
+ * and it holds no grant of its own that could outlive a revocation.
+ *
+ * Access codes are issued by the patient and valid for 24 hours. The window is
+ * evaluated in SQL against the database clock, so nothing here — and no
+ * container with a skewed clock — can extend it.
  */
-async function buildGrant(params: {
-  patientId: string;
-  method: AccessMethod;
-  authorizationStatus: AuthorizationStatus;
-  expiresInMinutes: number | null;
-}): Promise<PatientAccessGrant> {
-  const patient = await patientRepository.findById(params.patientId);
-  if (!patient) {
-    throw ApiError.notFound("PATIENT_NOT_FOUND", "Patient could not be found.");
-  }
 
-  const linkedAppointment = await appointmentRepository.findUpcomingByPatientId(patient.id);
-  const appointment = linkedAppointment
-    ? await appointmentService.getById(linkedAppointment.id)
-    : null;
-
-  // Grants are retained server-side so a consultation can resolve its
-  // authorization from an id rather than from anything the client asserts.
-  return accessGrantRepository.save({
-    id: createId("grant"),
-    patient,
-    method: params.method,
-    authorizationStatus: params.authorizationStatus,
-    appointment,
-    expiresAt:
-      params.expiresInMinutes === null ? null : minutesFromNow(params.expiresInMinutes),
-    grantedAt: new Date().toISOString(),
-  });
-}
-
-function normalizeLinkToken(rawLink: string): string {
-  const trimmed = rawLink.trim();
-  // Accept a full share URL or the bare token the doctor may have copied.
-  const withoutQuery = trimmed.split(/[?#]/)[0] ?? trimmed;
-  const segments = withoutQuery.split("/").filter(Boolean);
-  return (segments[segments.length - 1] ?? "").toUpperCase();
+/** Codes are typed by hand from the patient's screen; be liberal about format. */
+function normalizeCode(raw: string): string {
+  return raw.trim().toUpperCase().replace(/\s+/g, "");
 }
 
 export const patientAccessService = {
   async validateAccessCode(rawCode: unknown): Promise<PatientAccessGrant> {
-    const code = typeof rawCode === "string" ? rawCode.trim() : "";
+    const code = typeof rawCode === "string" ? normalizeCode(rawCode) : "";
     if (!code) {
       throw ApiError.validation("Please correct the highlighted fields.", {
         code: "Access code is required.",
       });
     }
-
-    await simulateLatency(2);
-
-    const record = await patientAccessRepository.findAccessCode(code);
-    if (!record) {
-      throw new ApiError(
-        404,
-        "ACCESS_CODE_INVALID",
-        "This access code is not recognised. Check the code with the patient and try again.",
-      );
-    }
-
-    return buildGrant({
-      patientId: record.patientId,
-      method: "ACCESS_CODE",
-      authorizationStatus: record.authorizationStatus,
-      expiresInMinutes: record.expiresInMinutes,
-    });
+    return patientAccessRepository.redeemAccessCode(code);
   },
 
-  async validateSharingLink(rawLink: unknown): Promise<PatientAccessGrant> {
-    const link = typeof rawLink === "string" ? rawLink.trim() : "";
-    if (!link) {
+  async grantFromAppointment(rawAppointmentId: unknown): Promise<PatientAccessGrant> {
+    const appointmentId = typeof rawAppointmentId === "string" ? rawAppointmentId.trim() : "";
+    if (!appointmentId) {
       throw ApiError.validation("Please correct the highlighted fields.", {
-        link: "Sharing link is required.",
+        appointmentId: "An appointment is required.",
       });
     }
-
-    await simulateLatency(2);
-
-    const record = await patientAccessRepository.findSharingLink(normalizeLinkToken(link));
-    if (!record) {
-      throw new ApiError(
-        404,
-        "ACCESS_LINK_INVALID",
-        "This sharing link is not valid. Ask the patient to generate a new one.",
-      );
-    }
-
-    if (record.state === "EXPIRED") {
-      throw new ApiError(
-        410,
-        "ACCESS_LINK_EXPIRED",
-        "This sharing link has expired. Ask the patient to share a new link.",
-      );
-    }
-
-    if (record.state === "REVOKED") {
-      throw ApiError.forbidden(
-        "ACCESS_LINK_REVOKED",
-        "The patient has revoked access through this link.",
-      );
-    }
-
-    return buildGrant({
-      patientId: record.patientId,
-      method: "SHARING_LINK",
-      authorizationStatus: record.authorizationStatus,
-      expiresInMinutes: record.expiresInMinutes,
-    });
+    return patientAccessRepository.grantFromAppointment(appointmentId);
   },
 
-  async grantFromAppointment(appointmentId: string): Promise<PatientAccessGrant> {
-    const appointment = await appointmentService.getById(appointmentId);
-
-    return accessGrantRepository.save({
-      id: createId("grant"),
-      patient: appointment.patient,
-      method: "APPOINTMENT",
-      authorizationStatus: "AUTHORIZED",
-      appointment,
-      expiresAt: minutesFromNow(appointment.durationMinutes + 30),
-      grantedAt: new Date().toISOString(),
-    });
+  /**
+   * Sharing links are not part of this flow.
+   *
+   * The patient platform issues 24-hour access codes; a link-based share of a
+   * clinical record has no issuing path behind it yet. Returning a clear
+   * refusal is better than a screen that accepts a token nothing can mint.
+   */
+  async validateSharingLink(): Promise<never> {
+    throw new ApiError(
+      501,
+      "INTERNAL_ERROR",
+      "Sharing links are not available. Ask the patient for a 24-hour access code instead.",
+    );
   },
 };

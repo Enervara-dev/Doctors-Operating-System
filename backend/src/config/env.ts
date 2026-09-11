@@ -20,11 +20,6 @@ export const env = {
   apiHost: process.env.API_HOST ?? "0.0.0.0",
   /** Comma-separated list, or `*` to allow any origin during local development. */
   corsOrigin: process.env.CORS_ORIGIN ?? "*",
-  /**
-   * Artificial latency on mock reads. Keeps loading states honest in Phase 1;
-   * set to 0 for tests.
-   */
-  mockLatencyMs: readNumber("MOCK_LATENCY_MS", 220),
   nodeEnv: process.env.NODE_ENV ?? "development",
 
   /**
@@ -42,4 +37,19 @@ export const env = {
 
   /** Heartbeat interval for the live event stream, in milliseconds. */
   streamHeartbeatMs: readNumber("STREAM_HEARTBEAT_MS", 15000),
+
+  /**
+   * Base URL of the patient platform's API — the system of record for
+   * patients, appointments, health profiles, labs, prescriptions and
+   * consultations. This service holds no clinical database of its own and
+   * reads everything through that API, forwarding the clinician's own token.
+   */
+  patientApiUrl: (process.env.PATIENT_API_URL ?? "http://localhost:5000").replace(/\/+$/, ""),
+
+  /**
+   * Upstream timeout. Below the browser's patience and well below any proxy
+   * idle timeout, so a stalled dependency surfaces as a clear message on the
+   * screen rather than a spinner that never resolves.
+   */
+  patientApiTimeoutMs: readNumber("PATIENT_API_TIMEOUT_MS", 10000),
 } as const;

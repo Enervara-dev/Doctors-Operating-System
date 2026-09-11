@@ -28,10 +28,10 @@ const TYPE_OPTIONS = [
   { value: "", label: "Any type" },
   { value: "General Consultation", label: "General Consultation" },
   { value: "Follow-up", label: "Follow-up" },
-  { value: "Teleconsultation", label: "Teleconsultation" },
   { value: "Report Review", label: "Report Review" },
-  { value: "Pre-operative Assessment", label: "Pre-operative Assessment" },
-  { value: "Chronic Care Review", label: "Chronic Care Review" },
+  { value: "Medication Review", label: "Medication Review" },
+  { value: "Preventive Health Check", label: "Preventive Health Check" },
+  { value: "Urgent Consultation", label: "Urgent Consultation" },
 ];
 
 const EMPTY_FILTERS: RecordListFilters = {};

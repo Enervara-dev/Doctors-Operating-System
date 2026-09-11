@@ -1,5 +1,4 @@
 import type {
-  AuthorizationSnapshot,
   Consultation,
   ConsultationStatus,
   ConsultationStep,
@@ -15,14 +14,8 @@ import type {
 import { ApiError } from "../lib/api-error";
 import { assertTransition, isConsultationStatus } from "../lib/consultation-status";
 import { furthestOf, isStep, stepIndex } from "../lib/consultation-steps";
-import { simulateLatency } from "../lib/delay";
 import { createId } from "../lib/id";
-import { accessGrantRepository } from "../repositories/access-grant.repository";
-import { appointmentRepository } from "../repositories/appointment.repository";
-import { caseIntakeRepository } from "../repositories/case-intake.repository";
 import { consultationRepository } from "../repositories/consultation.repository";
-import { doctorDecisionRepository } from "../repositories/doctor-decision.repository";
-import { patientRepository } from "../repositories/patient.repository";
 import { auditService } from "./audit.service";
 import { consultationRecordService } from "./consultation-record.service";
 import { patientContextService } from "./patient-context.service";
@@ -77,92 +70,9 @@ function touch(consultation: Consultation): Consultation {
  */
 const touchContent = touch;
 
-/**
- * Resolves the authorization snapshot from a server-issued grant id.
- *
- * The client sends an id, never an authorization claim: a request cannot assert
- * that it is authorised. A grant that does not exist, or belongs to a different
- * patient, is rejected outright.
- */
-async function resolveAuthorization(
-  rawGrantId: unknown,
-  patientId: string,
-): Promise<AuthorizationSnapshot | null> {
-  const grantId = optionalText(rawGrantId);
-  if (!grantId) return null;
-
-  const grant = await accessGrantRepository.findById(grantId);
-  if (!grant || grant.patient.id !== patientId) {
-    throw ApiError.forbidden(
-      "UNAUTHORIZED",
-      "The access grant for this patient is no longer valid. Open the patient again to continue.",
-    );
-  }
-
-  return {
-    grantId: grant.id,
-    method: grant.method,
-    status: grant.authorizationStatus,
-    grantedAt: grant.grantedAt,
-    expiresAt: grant.expiresAt,
-    appointmentId: grant.appointment?.id ?? null,
-  };
-}
-
 /* -------------------------------------------------------------------------- */
 /* Factories                                                                   */
 /* -------------------------------------------------------------------------- */
-
-const EMPTY_TREATMENT: TreatmentPlan = {
-  nonPharmacological: [],
-  procedures: [],
-  advice: "",
-};
-
-const EMPTY_FOLLOW_UP: FollowUpPlan = {
-  date: null,
-  interval: "",
-  reason: "",
-  requiredInvestigations: [],
-  medicationReview: "",
-  symptomMonitoring: [],
-  escalationInstructions: "",
-};
-
-async function buildInitialCaseContext(
-  patientId: string,
-  appointmentId: string | null,
-): Promise<CurrentCaseContext> {
-  const intake = appointmentId
-    ? await caseIntakeRepository.findByAppointmentId(appointmentId)
-    : await caseIntakeRepository.findLatestByPatientId(patientId);
-
-  if (intake) {
-    return {
-      chiefComplaint: intake.chiefComplaint,
-      historyOfPresentIllness: intake.historyOfPresentIllness,
-      symptoms: intake.symptoms,
-      symptomTimeline: intake.symptomTimeline,
-      clinicalFindings: [],
-      doctorNotes: "",
-      additionalObservations: "",
-    };
-  }
-
-  // No patient-reported intake: fall back to the booking reason so the doctor
-  // starts from something rather than an empty form.
-  const appointment = appointmentId ? await appointmentRepository.findById(appointmentId) : null;
-
-  return {
-    chiefComplaint: appointment?.reason ?? "",
-    historyOfPresentIllness: "",
-    symptoms: [],
-    symptomTimeline: [],
-    clinicalFindings: [],
-    doctorNotes: "",
-    additionalObservations: "",
-  };
-}
 
 /* -------------------------------------------------------------------------- */
 /* Service                                                                     */
@@ -170,7 +80,6 @@ async function buildInitialCaseContext(
 
 export const consultationService = {
   async getById(consultationId: string): Promise<Consultation> {
-    await simulateLatency();
     const consultation = await consultationRepository.findById(consultationId);
     if (!consultation) {
       throw ApiError.notFound(
@@ -178,12 +87,11 @@ export const consultationService = {
         "This consultation could not be found. It may have ended with the previous session.",
       );
     }
-    // Doctor decisions are owned by their own repository so platform output and
-    // doctor judgement stay in separate domains; the aggregate composes them.
-    return {
-      ...consultation,
-      doctorDecisions: await doctorDecisionRepository.list(consultationId),
-    };
+    // Decisions arrive with the consultation: they are rows on the same
+    // aggregate. Re-reading them here would now be a second round trip for
+    // data already in hand — and, while the decision repository reads through
+    // this same method, a cycle.
+    return consultation;
   },
 
   /**
@@ -220,9 +128,14 @@ export const consultationService = {
   },
 
   /**
-   * Opens a consultation for a patient. If an unfinalized consultation already
-   * exists for the same patient and appointment it is resumed instead of
-   * duplicated — a doctor returning to a visit must land on the same record.
+   * Opens a consultation, or resumes the one already open for this visit.
+   *
+   * Both the decision and the record now belong to the patient platform: it
+   * resolves the access grant, attaches the patient-reported intake, mints the
+   * reference and enforces one-consultation-per-appointment with a unique
+   * index. A doctor who returns to a visit lands on the same row even after
+   * this process has restarted, which the in-memory implementation could not
+   * promise.
    */
   async create(input: {
     patientId: unknown;
@@ -234,68 +147,31 @@ export const consultationService = {
     const patientId = requireText(input.patientId, "patientId", "A patient is required.");
     const appointmentId = optionalText(input.appointmentId);
 
-    await simulateLatency();
+    const { consultation, resumed } = await consultationRepository.createOrResume({
+      patientId,
+      appointmentId,
+      accessGrantId: optionalText(input.accessGrantId),
+    });
 
-    const patient = await patientRepository.findById(patientId);
-    if (!patient) {
-      throw ApiError.notFound("PATIENT_NOT_FOUND", "Patient could not be found.");
+    // The platform writes its own audit row for both outcomes. This one is the
+    // clinician-facing trail shown beside the record, and a resumed visit is
+    // not a new consultation, so it is not recorded as one.
+    if (!resumed) {
+      await auditService.record({
+        consultationId: consultation.id,
+        entityType: "CONSULTATION",
+        entityId: consultation.id,
+        action: "CONSULTATION_CREATED",
+        summary: "Consultation " + consultation.reference + " opened",
+        doctor: input.doctor,
+        newValue: {
+          consultationType: consultation.consultationType,
+          accessMethod: consultation.authorization?.method ?? null,
+        },
+      });
     }
 
-    const existing = await consultationRepository.findOpenForPatient(patientId, appointmentId);
-    if (existing) return existing;
-
-    const authorization = await resolveAuthorization(input.accessGrantId, patientId);
-
-    const appointment = appointmentId
-      ? await appointmentRepository.findById(appointmentId)
-      : null;
-
-    const now = new Date().toISOString();
-    const consultation: Consultation = {
-      id: createId("cons"),
-      reference: await consultationRepository.nextReference(),
-      patientId,
-      doctorId: input.doctor.id,
-      appointmentId,
-      consultationType:
-        optionalText(input.consultationType) ??
-        appointment?.appointmentType ??
-        "General Consultation",
-      authorization,
-      status: "READY",
-      currentStep: "BRIEF",
-      furthestStep: "BRIEF",
-      completedSteps: [],
-      caseContext: await buildInitialCaseContext(patientId, appointmentId),
-      // Decisions live in their own repository; the aggregate is hydrated on read.
-      doctorDecisions: [],
-      diagnoses: [],
-      assessmentNotes: "",
-      investigations: [],
-      medications: [],
-      treatmentPlan: EMPTY_TREATMENT,
-      followUp: EMPTY_FOLLOW_UP,
-      additionalNotes: "",
-      startedAt: now,
-      updatedAt: now,
-      finalizedAt: null,
-      recordId: null,
-    };
-
-    const created = await consultationRepository.save(consultation);
-    await auditService.record({
-      consultationId: created.id,
-      entityType: "CONSULTATION",
-      entityId: created.id,
-      action: "CONSULTATION_CREATED",
-      summary: "Consultation " + created.reference + " opened for " + patient.fullName,
-      doctor: input.doctor,
-      newValue: {
-        consultationType: created.consultationType,
-        accessMethod: authorization?.method ?? null,
-      },
-    });
-    return created;
+    return consultation;
   },
 
   /** Partial update of consultation metadata, treatment plan and free notes. */

@@ -34,9 +34,20 @@ Brief → Live session ─┬─ speaker-labelled transcript
 The pre-consultation brief is unchanged. Everything after it is driven by a live
 session that the doctor starts, pauses and ends.
 
-Real authentication, a database, transcription and AI are explicitly **not** part of any
-phase — the live session is served by a deterministic, clearly-labelled fixture adapter
-behind a provider boundary. See [Limitations](#limitations).
+**Phase 4** puts the flow up to the pre-consultation brief on the real database. Doctors,
+patients, appointments, access codes, health profiles, labs, prescriptions and
+consultations are read from the patient platform's PostgreSQL schema
+(`prod_app/app/backend`) through its `/api/doctor` API. This service holds no clinical
+database of its own:
+
+```
+Doctor UI → Doctor API → (bearer token forwarded) → Patient platform API → PostgreSQL
+```
+
+Transcription and AI are still explicitly **not** part of any phase — the live session is
+served by a deterministic, clearly-labelled fixture adapter behind a provider boundary.
+Everything after the brief (live session, assessment, diagnosis, treatment, follow-up,
+finalization) is still process-local. See [Limitations](#limitations).
 
 ---
 
@@ -60,44 +71,75 @@ development, and the API can move behind a gateway later without touching client
 
 ### Demo credentials
 
-| Field    | Value                 |
-| -------- | --------------------- |
-| Email    | `doctor@enervara.com` |
-| Password | `password123`         |
+Created by the seed script below, not by a fixture file:
+
+| Field    | Value                      |
+| -------- | -------------------------- |
+| Email    | `doctor@demo.enervara.dev` |
+| Password | `password123`              |
+
+The account is a `users` row with `role = 'doctor'` in the patient platform's database,
+plus a `doctors` profile. Authentication is delegated there; no password reaches this
+service beyond the single call that forwards it.
+
+### Seeding the demo dataset
+
+Run from the **patient backend** (`prod_app/app/backend`), against a database you are
+willing to write demo patients into:
+
+```bash
+npm run migrate                        # applies 0011_doctor_consultations.sql
+npm run seed:doctor-demo -- --yes      # 1 doctor, 11 patients, 15 appointments
+npm run seed:doctor-demo -- --yes --clean   # remove it again
+```
+
+Every seeded account uses the `@demo.enervara.dev` domain, which exists only for this
+purpose: the script deletes those accounts before re-seeding, `on delete cascade` removes
+everything hanging off them, and nothing outside that domain is ever touched. The script
+prints its target host and refuses to run without `--yes`.
 
 ### Test data for the access flows
 
-| Input                                         | Result                                                              |
-| --------------------------------------------- | ------------------------------------------------------------------- |
-| `ENV-48291`                                   | Valid code → Ananya Sharma, **Authorized**                          |
-| `ENV-73104`                                   | Valid code → Lakshmi Narayanan, **Authorized**                      |
-| `ENV-90055`                                   | Valid code → Kabir Sethi, **Pending approval** (Continue is blocked) |
-| anything else                                 | `ACCESS_CODE_INVALID` error state                                   |
-| `https://enervara.health/share/SHR-VALID-7F3A`| Valid link → Samuel Rodrigues                                       |
-| `SHR-EXPIRED-2B9C`                            | **Expired** link state                                              |
-| `SHR-REVOKED-5D1E`                            | **Revoked** link state                                              |
-| anything else                                 | **Invalid** link state                                              |
+Access codes are issued by the patient and valid for **24 hours**. Expiry is evaluated in
+SQL against the database clock, so no container's clock can lengthen or shorten it.
 
-Codes and link tokens are case-insensitive, and a sharing link may be pasted in full or
-as the bare token.
+| Input       | Result                                                          |
+| ----------- | --------------------------------------------------------------- |
+| `ENV-48291` | Ananya Sharma, **Authorized**                                   |
+| `ENV-73104` | Rajesh Menon, **Authorized**                                    |
+| `ENV-90055` | Lakshmi Narayanan, **Authorized**                               |
+| `ENV-11902` | Kabir Sethi, **Pending approval** (Continue is blocked)         |
+| anything else | `ACCESS_CODE_INVALID`                                         |
+
+Codes are case-insensitive. An unknown, revoked or expired code returns the same "not
+recognised" — telling them apart would confirm which codes had once been real.
+
+**Sharing links are not implemented.** The platform issues access codes; `/patients/access/link`
+returns a clear refusal rather than accepting a token nothing can mint.
 
 ### Test data for the consultation workflow
 
-Six of today's and this week's appointments carry patient-reported intake, so opening
-them starts a consultation with a real complaint, HPI, symptom list and timeline:
+Six of today's appointments carry patient-reported intake, so opening them starts a
+consultation with a real complaint, HPI, symptom list and timeline:
 
-| Appointment                                    | Patient            | Seeded case                                     |
-| ---------------------------------------------- | ------------------ | ----------------------------------------------- |
-| 10:30 — General Consultation (**Ready**)       | Ananya Sharma      | Persistent fever and fatigue, 5-point timeline  |
-| 11:00 — Report Review (**Ready**)              | Lakshmi Narayanan  | Renal panel and Holter review                   |
-| 10:00 — Follow-up (**In progress**)            | Rajesh Menon       | Glycaemic control, ankle swelling               |
-| 14:00 — Pre-operative Assessment               | Samuel Rodrigues   | Fitness before elective cholecystectomy         |
-| 11:45 — Teleconsultation                       | Fatima Qureshi     | Increasing migraine frequency                   |
-| 16:00 — Follow-up                              | Priya Ravindran    | PCOS management, cycle diary                    |
+| Appointment                                | Patient           | Seeded case                                    |
+| ------------------------------------------ | ----------------- | ---------------------------------------------- |
+| 10:30 — General Consultation (**Ready**)   | Ananya Sharma     | Persistent fever and fatigue, 5-point timeline |
+| 11:15 — Follow-up (**In progress**)        | Rajesh Menon      | Glycaemic control, ankle swelling              |
+| 12:00 — Report Review (**Ready**)          | Lakshmi Narayanan | Renal panel and Holter review                  |
+| 14:00 — Preventive Health Check            | Samuel Rodrigues  | Annual check, snoring and raised transaminases |
+| 15:30 — Urgent Consultation                | Fatima Qureshi    | Increasing migraine frequency                  |
+| 16:15 — Medication Review                  | Priya Ravindran   | PCOS management, cycle diary                   |
 
-Six patients also have full clinical context (allergies, medical history, current
-medications, previous consultations) in `data/patient-contexts.json`. Any other patient
-still opens correctly — the service builds a demographics-only context.
+Times are wall-clock and the day is rebased on every seed run, so the board always reads
+like a real clinic.
+
+Six patients carry a full record — allergies, conditions, medications, surgeries,
+hospitalisations, lifestyle, labs and prescriptions. Four are deliberately thin: a brief
+has to be honest when a patient has recorded almost nothing, and that path is only
+exercised if such a patient exists. `ENV-20418` (Arjun Pillai) has positively confirmed
+**no known allergies and no known conditions**, which the brief states as an answer
+rather than rendering as a gap.
 
 Opening the same patient and appointment again **resumes** the existing consultation
 rather than creating a duplicate. Once finalized, opening them starts a fresh record.
@@ -207,7 +249,7 @@ backend/src/
 │                 provider.ts (contract), mock-adapter.ts (fixture provider),
 │                 session-script.ts (the deterministic script),
 │                 session-engine.ts (session ownership, persistence, fan-out)
-├─ mock/          Fixture loading and date rebasing
+├─ mock/          The two remaining fixtures (finalized records, audit events)
 ├─ middleware/    Auth, error handler, 404, request logging
 ├─ lib/           ApiError, response/param helpers, step order, id generation
 └─ app.ts server.ts
@@ -235,7 +277,11 @@ never read a file, never index an array by position, and never rely on load orde
 
 | Repository | Backed by | Notes |
 | ---------- | --------- | ----- |
-| `consultation.repository` | In-memory map, JSON seed | Session records; lost on restart |
+| `doctor.repository` | **Patient platform API** | Login and session; no credential handling here |
+| `appointment.repository` | **Patient platform API** | Board arrives bucketed, from the server's clock |
+| `patient.repository`, `patient-context.repository` | **Patient platform API** | One brief read per request, memoised |
+| `patient-access.repository` | **Patient platform API** | 24-hour codes and grants, in PostgreSQL |
+| `consultation.repository` | **Patient platform API** + in-memory overlay | Identity, authorization and intake are durable; later-step doctor edits are still process-local |
 | `consultation-record.repository` | In-memory map, JSON seed | Write-once; no update path exists |
 | `audit.repository` | In-memory array, JSON seed | Append-only; no update or delete |
 | `patient-communication.repository` | In-memory map | Payload generated at finalization |
@@ -855,25 +901,25 @@ these states are exercised in normal use. Set it to `0` for tests.
 
 ## Notes on the mock data
 
-`data/appointments.json` is authored against a fixture anchor date and rebased by
-`today − anchor` whole days, so the dataset always spans past / today / upcoming whenever
-the app is run. The shift is applied **per read** in `appointment.repository`, not once at
-module load, so a server left running across midnight does not keep serving yesterday's
-window. Delete that rebasing step once a real database supplies live rows.
+Two fixture files remain. The per-read date rebasing that kept the appointment fixture
+spanning past / today / upcoming is **gone**: appointments are rows with a real
+`scheduled_at`, and the today / upcoming / past split is computed upstream against the
+database clock.
 
-| File                                    | Contents                                                          |
-| --------------------------------------- | ----------------------------------------------------------------- |
-| `data/doctors.json`                     | The mock doctor account                                           |
-| `data/credentials.json`                 | Plaintext demo credentials (Phase 1 only)                         |
-| `data/patients.json`                    | 12 patients, ages 8–72                                            |
-| `data/appointments.json`                | 20 appointments across every status and six types                 |
-| `data/access-codes.json`                | Access codes, including one that grants only `PENDING`            |
-| `data/sharing-links.json`               | Valid, expired and revoked share tokens                           |
-| `data/patient-contexts.json`            | Allergies, history, medications and previous visits for 6 patients |
-| `data/case-intake.json`                 | Patient-reported complaint, HPI, symptoms and timeline for 6 visits |
-| `data/consultations.json`               | Consultation seed (empty; session records live in memory)         |
-| `data/consultation-records.json`        | Two finalized records with full snapshots                         |
-| `data/audit-events.json`                | 21 seeded audit events across those two records                   |
+| File                             | Contents                                                     |
+| -------------------------------- | ------------------------------------------------------------ |
+| `data/consultation-records.json` | Two finalized records with full snapshots                    |
+| `data/audit-events.json`         | 21 seeded audit events across those two records              |
+
+Everything else that used to live here — doctors, credentials, patients, appointments,
+access codes, sharing links, health profiles and pre-consultation intake — has been
+deleted. It is read from the patient platform's PostgreSQL schema, and keeping a second
+copy of a patient's record in this process, even as demo data, is exactly the parallel
+source of truth this change removed. Demo rows now come from
+`prod_app/app/backend` → `npm run seed:doctor-demo`.
+
+These two remain because the finalization workflow itself has not been built against the
+database yet; they exist so the archive screens are not empty.
 
 The live session has no JSON fixture. Its script is code —
 `backend/src/live/session-script.ts` — because it is a *timeline* of emissions, not a
@@ -889,16 +935,16 @@ All patients, doctors and clinical details are fictional.
 
 Intentionally **not** implemented:
 
-- **No database.** No PostgreSQL, MongoDB, Redis, Prisma or any ORM. Mock JSON behind repository interfaces. Consultations created during a session live in an in-memory map and are **lost on API restart**.
-- **No real authentication.** The token is an unsigned, reversible envelope issued by `backend/src/services/auth.service.ts`. It provides no security. Route protection is client-side (`AuthGuard`); it moves to `middleware.ts` when real cookie sessions land.
+- **No database *in this service*.** Everything up to the brief is read from the patient platform's PostgreSQL schema over its `/api/doctor` API; this process opens no connection and holds no clinical rows. What is still process-local is the doctor's work on the steps **after** the brief — assessment, diagnoses, investigations, medications, treatment, follow-up and decisions — which lives in an overlay in `consultation.repository` and is **lost on API restart**. The consultation's identity, authorization and patient-reported intake are durable.
+- **Authentication is delegated, not absent.** Login forwards to the patient platform, which verifies a bcrypt hash and issues the same signed JWT the patient app uses; this service holds no signing key and stores no credential. Route protection in the browser is still client-side (`AuthGuard`) — it moves to `middleware.ts` when cookie sessions land — but every API call is authorised server-side upstream.
 - **No AI and no Clinical Intelligence Platform.** No LLM, model, inference server or reasoning engine. The only provider implementation is `backend/src/live/mock-adapter.ts`, which replays a fixed script. Everything it emits is marked `FIXTURE` and labelled as test data in the UI. Connecting a real platform means writing one more `ClinicalIntelligenceProvider`; nothing above `session-engine.ts` changes.
 - **No transcription or diarisation.** No audio is captured, uploaded or processed, and no microphone permission is requested. Speaker labels come from the script.
 - **No RAG.** No retrieval layer, embeddings or vector database.
 - **No real clinical decision support.** Nothing in this application evaluates a patient, and no clinical content is generated. Every assessment, investigation, prescription and follow-up is authored by the doctor.
-- **No production authorization.** Access grants are read from fixtures and are not enforced anywhere. There is no consent verification, token signing, revocation checking or audit logging.
+- **Authorization is enforced, with gaps.** A doctor may only read a patient behind a live `doctor_access_grants` row, created from a 24-hour patient-issued access code or from the doctor's own appointment, re-resolved from the database on every request and audited on every read. What is **not** built: patient-initiated revocation from the patient app, sharing links, and any consent UI — the `patient_consents` table carries a single `device_location` consent type and does not yet model clinician access.
 - **No patient-application integration**, WhatsApp, audio recording or transcription.
 - **No amendment workflow.** Versioning, `amendedFromRecordId` and `supersededByRecordId` are modelled and the repository is write-once, but creating an amended version is not implemented. Nothing in the UI suggests otherwise.
-- **No cross-session history.** Records, live sessions, transcripts, extracted context, intelligence versions, timeline events and decisions all live in memory and are lost on API restart; only the two seeded records survive.
+- **No cross-session history beyond the brief.** Live sessions, transcripts, extracted context, intelligence versions, timeline events, decisions and finalized records still live in memory and are lost on API restart. Appointments, patients, access grants, consultations and intake survive, because they are rows.
 - **No multi-doctor or multi-device session sharing.** A live session is owned by one backend process. There is no broker, no reconnect-and-replay beyond the cursor, and no presence.
 - **No automated test suite.** Verified by typecheck, lint, production build, scripted API contract passes (64 + 106 + 92 assertions) and scripted browser passes across four viewports (47 + 81 + 101 + 82 assertions).
 
@@ -953,9 +999,9 @@ rather than serving half an app.
 This build is a demonstration, not a clinical system. A deployment is only appropriate
 behind a private URL or an access-controlled environment:
 
-- **Anyone with the URL can sign in.** The credentials are `doctor@enervara.com` /
-  `password123`, stored in plaintext in `data/credentials.json`, and the token is an
-  unsigned envelope. There is no security boundary.
+- **The demo account is public knowledge.** `doctor@demo.enervara.dev` / `password123`
+  is in this README and in the seed script. Delete it (`npm run seed:doctor-demo -- --yes
+  --clean`) before pointing anyone at an environment that also holds real accounts.
 - **All state is in memory.** Every consultation, live session, transcript, decision and
   finalized record is lost on redeploy, restart or Railway sleeping the container. Only
   the two seeded records survive. Nothing is persisted, so nothing is recoverable.
@@ -983,7 +1029,9 @@ rebuild, not a restart.
 | `API_PORT`                 | `4000`                  | API     | Internal API port in a single-container deploy                 |
 | `API_HOST`                 | `0.0.0.0`               | API     | Interface Express binds. The launcher sets `127.0.0.1` so the API is never publicly routable |
 | `CORS_ORIGIN`              | `*`                     | API     | Allowed origins for direct API access                          |
-| `MOCK_LATENCY_MS`          | `220`                   | API     | Simulated latency on mock reads                                |
+| `MOCK_LATENCY_MS`          | `220`                   | API     | Simulated latency on the remaining fixture reads                |
+| `PATIENT_API_URL`          | `http://localhost:5000` | API     | Patient platform base URL — the system of record. `DATABASE_URL` belongs there, not here |
+| `PATIENT_API_TIMEOUT_MS`   | `10000`                 | API     | Upstream request timeout                                        |
 | `CLINICAL_INTELLIGENCE_URL`| *(unset)*               | API     | Base URL of the Clinical Intelligence Platform. Unset → the fixture adapter, reported as fixture-backed |
 | `LIVE_TICK_SCALE`          | `1`                     | API     | Speeds up or slows the scripted session. `0.25` runs it in ~7 s |
 | `STREAM_HEARTBEAT_MS`      | `15000`                 | API     | SSE heartbeat interval                                         |

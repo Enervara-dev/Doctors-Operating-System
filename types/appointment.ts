@@ -1,20 +1,32 @@
 import type { Patient } from "./patient";
 
+/**
+ * The patient-facing lifecycle, shared verbatim with the platform's
+ * `appointment_lifecycle_status`. The clinician's board reads the same states
+ * the patient sees — one appointment cannot have two lifecycles.
+ */
 export type AppointmentStatus =
-  | "UPCOMING"
-  | "READY"
-  | "IN_PROGRESS"
+  | "REQUESTED"
+  | "CONFIRMED"
+  | "RESCHEDULED"
+  | "CHECKED_IN"
+  | "IN_CONSULTATION"
   | "COMPLETED"
   | "CANCELLED"
-  | "NO_SHOW";
+  | "NO_SHOW"
+  | "FOLLOW_UP_DUE";
 
+/**
+ * The visit types the practice offers. These strings are the database enum
+ * `appointment_type` verbatim, so there is no mapping table to drift.
+ */
 export type AppointmentType =
   | "General Consultation"
   | "Follow-up"
-  | "Teleconsultation"
   | "Report Review"
-  | "Pre-operative Assessment"
-  | "Chronic Care Review";
+  | "Medication Review"
+  | "Preventive Health Check"
+  | "Urgent Consultation";
 
 export type AppointmentAlertSeverity = "INFO" | "WARNING" | "CRITICAL";
 

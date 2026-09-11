@@ -1,45 +1,20 @@
-import type { PatientContext, PatientDemographics } from "../domain/types";
-import { ApiError } from "../lib/api-error";
-import { simulateLatency } from "../lib/delay";
+import type { PatientContext } from "../domain/types";
 import { patientContextRepository } from "../repositories/patient-context.repository";
-import { patientRepository } from "../repositories/patient.repository";
 
+/**
+ * The patient's pre-visit picture.
+ *
+ * Assembled upstream in a single read — demographics, allergies, history,
+ * medications, previous consultations, recent labs and prior prescriptions —
+ * and behind the platform's per-patient access check, so a doctor without a
+ * live grant gets a 403 rather than a thin record.
+ *
+ * There is no demographics-only fallback any more. A patient who has recorded
+ * nothing yields empty sections and an availability of UNAVAILABLE, which the
+ * brief says out loud; a missing patient is a genuine 404 from upstream.
+ */
 export const patientContextService = {
-  /**
-   * Assembles the patient's pre-visit picture. Demographics always come from
-   * the patient record; clinical history is layered on when a fixture exists,
-   * so every patient yields a usable context rather than a hard failure.
-   */
   async getByPatientId(patientId: string): Promise<PatientContext> {
-    await simulateLatency();
-
-    const patient = await patientRepository.findById(patientId);
-    if (!patient) {
-      throw ApiError.notFound("PATIENT_NOT_FOUND", "Patient could not be found.");
-    }
-
-    const demographics: PatientDemographics = {
-      patientId: patient.id,
-      fullName: patient.fullName,
-      age: patient.age,
-      gender: patient.gender,
-      bloodGroup: patient.bloodGroup,
-      city: patient.city,
-      phoneMasked: patient.phoneMasked,
-      avatarInitials: patient.avatarInitials,
-    };
-
-    const record = await patientContextRepository.findByPatientId(patientId);
-
-    return {
-      patientId: patient.id,
-      demographics,
-      allergies: record?.allergies ?? [],
-      medicalHistory: record?.medicalHistory ?? [],
-      currentMedications: record?.currentMedications ?? [],
-      previousConsultations: record?.previousConsultations ?? [],
-      relevantHealthInformation: record?.relevantHealthInformation ?? [],
-      lastUpdatedAt: new Date().toISOString(),
-    };
+    return patientContextRepository.findByPatientId(patientId);
   },
 };

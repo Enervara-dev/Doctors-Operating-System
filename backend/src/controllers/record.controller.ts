@@ -44,6 +44,9 @@ export const recordController = {
 
   async getPatientCommunication(req: Request, res: Response): Promise<void> {
     const id = requireParam(req, "id", "A record id is required.");
-    sendSuccess(res, await patientCommunicationService.getForRecord(id));
+    // The payload is a pure projection of the record, so the record is fetched
+    // here and projected — keeping the dependency one-way.
+    const record = await consultationRecordService.getById(id);
+    sendSuccess(res, patientCommunicationService.getForRecord(record));
   },
 };

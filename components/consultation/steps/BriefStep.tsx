@@ -97,31 +97,57 @@ export function BriefStep() {
         )}
       </StepSection>
 
-      {context && context.allergies.length > 0 ? (
+      {context ? (
         <StepSection
           title="Allergies"
           description="Confirm these with the patient before prescribing."
-          className="border-error-border bg-error-subtle"
+          className={
+            context.allergies.some((allergy) => !allergy.archived)
+              ? "border-error-border bg-error-subtle"
+              : undefined
+          }
         >
-          <ul className="space-y-2.5">
-            {context.allergies.map((allergy) => (
-              <li key={allergy.id} className="flex items-start gap-2.5">
-                <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-error" />
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-text">{allergy.substance}</p>
-                    <Badge tone={ALLERGY_SEVERITY_TONE[allergy.severity]}>
-                      {allergy.severity.toLowerCase()}
-                    </Badge>
+          {context.allergies.length > 0 ? (
+            <ul className="space-y-2.5">
+              {context.allergies.map((allergy) => (
+                <li key={allergy.id} className="flex items-start gap-2.5">
+                  <CircleAlert
+                    aria-hidden
+                    className={`mt-0.5 size-4 shrink-0 ${
+                      allergy.archived ? "text-text-tertiary" : "text-error"
+                    }`}
+                  />
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-text">{allergy.substance}</p>
+                      <Badge tone={ALLERGY_SEVERITY_TONE[allergy.severity]}>
+                        {allergy.severity.toLowerCase()}
+                      </Badge>
+                      {/* The patient retired this entry. Still shown, because
+                          an allergy someone stopped tracking is history — but
+                          marked, so it is not read as current. */}
+                      {allergy.archived ? <Badge>no longer listed</Badge> : null}
+                    </div>
+                    <p className="mt-0.5 text-sm text-text-secondary">{allergy.reaction}</p>
+                    <p className="text-xs text-text-tertiary">
+                      Recorded {formatHistoricalDate(allergy.recordedOn)}
+                    </p>
                   </div>
-                  <p className="mt-0.5 text-sm text-text-secondary">{allergy.reaction}</p>
-                  <p className="text-xs text-text-tertiary">
-                    Recorded {formatHistoricalDate(allergy.recordedOn)}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          ) : context.noKnownAllergiesConfirmedAt ? (
+            /* A positive statement, not a gap in the record. */
+            <p className="text-sm text-text">
+              Patient confirmed no known allergies on{" "}
+              {formatHistoricalDate(context.noKnownAllergiesConfirmedAt)}.
+            </p>
+          ) : (
+            <StepEmpty>
+              No allergies recorded, and the patient has not confirmed they have none.
+              Ask before prescribing.
+            </StepEmpty>
+          )}
         </StepSection>
       ) : null}
 
@@ -206,6 +232,9 @@ export function BriefStep() {
                       {item.status === "RESOLVED" ? (
                         <span className="text-text-tertiary"> · resolved</span>
                       ) : null}
+                      {item.archived ? (
+                        <span className="text-text-tertiary"> · no longer listed</span>
+                      ) : null}
                       {item.detail ? (
                         <span className="block text-xs text-text-secondary">{item.detail}</span>
                       ) : null}
@@ -263,6 +292,135 @@ export function BriefStep() {
                     </div>
                   ) : null}
                 </dl>
+              </li>
+            ))}
+          </ul>
+        )}
+      </StepSection>
+
+      <StepSection
+        title="Recent lab results"
+        description="Results the patient has on file, most recent first."
+      >
+        {contextStatus !== "ready" || !context ? (
+          <Skeleton className="h-24 w-full" />
+        ) : context.labReports.length === 0 ? (
+          <StepEmpty>No lab results on record.</StepEmpty>
+        ) : (
+          <div className="space-y-4">
+            {context.labReports.map((report) => (
+              <div
+                key={report.id}
+                className="rounded-control border border-border-default bg-surface-subtle p-3.5"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium text-text">{report.reportType}</p>
+                    {report.abnormalCount > 0 ? (
+                      <Badge tone="warning">
+                        {report.abnormalCount} outside range
+                      </Badge>
+                    ) : (
+                      <Badge tone="success">all within range</Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-text-tertiary">
+                    {report.reportDate ? formatHistoricalDate(report.reportDate) : "Date not recorded"}
+                    {report.labName ? ` · ${report.labName}` : ""}
+                  </p>
+                </div>
+
+                {/* Tables scroll in their own container so the page never does. */}
+                <div className="mt-2.5 -mx-1 overflow-x-auto px-1">
+                  <table className="w-full min-w-[26rem] border-collapse text-xs">
+                    <thead>
+                      <tr className="text-left text-text-tertiary">
+                        <th className="py-1 pr-3 font-medium">Test</th>
+                        <th className="py-1 pr-3 font-medium">Result</th>
+                        <th className="py-1 pr-3 font-medium">Reference</th>
+                        <th className="py-1 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-default">
+                      {report.results.map((result) => (
+                        <tr key={`${report.id}-${result.testName}`}>
+                          <td className="py-1.5 pr-3 text-text">{result.testName}</td>
+                          <td className="py-1.5 pr-3 text-text">
+                            {result.value ?? "—"}
+                            {result.unit ? ` ${result.unit}` : ""}
+                          </td>
+                          <td className="py-1.5 pr-3 text-text-secondary">
+                            {result.referenceText ??
+                              (result.referenceLow !== null && result.referenceHigh !== null
+                                ? `${result.referenceLow}–${result.referenceHigh}`
+                                : "—")}
+                          </td>
+                          <td className="py-1.5">
+                            {result.status === "NORMAL" ? (
+                              <span className="text-text-tertiary">Normal</span>
+                            ) : (
+                              <Badge tone={result.status === "REVIEW" ? "neutral" : "warning"}>
+                                {result.status.toLowerCase()}
+                              </Badge>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </StepSection>
+
+      <StepSection
+        title="Prior prescriptions"
+        description="What the patient has been prescribed elsewhere."
+      >
+        {contextStatus !== "ready" || !context ? (
+          <Skeleton className="h-24 w-full" />
+        ) : context.prescriptions.length === 0 ? (
+          <StepEmpty>No prescriptions on record.</StepEmpty>
+        ) : (
+          <ul className="space-y-3">
+            {context.prescriptions.map((prescription) => (
+              <li
+                key={prescription.id}
+                className="rounded-control border border-border-default bg-surface-subtle p-3.5"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="text-sm font-medium text-text">
+                    {prescription.prescriberName ?? "Prescriber not recorded"}
+                  </p>
+                  <p className="text-xs text-text-tertiary">
+                    {prescription.prescribedDate
+                      ? formatHistoricalDate(prescription.prescribedDate)
+                      : "Date not recorded"}
+                    {prescription.clinicName ? ` · ${prescription.clinicName}` : ""}
+                  </p>
+                </div>
+                <ul className="mt-2 space-y-1.5">
+                  {prescription.medications.map((medication, index) => (
+                    <li key={`${prescription.id}-${index}`} className="text-sm">
+                      <span className="text-text">{medication.name}</span>
+                      {medication.strength ? (
+                        <span className="text-text-secondary"> {medication.strength}</span>
+                      ) : null}
+                      <span className="block text-xs text-text-secondary">
+                        {[medication.dosage, medication.frequency, medication.duration]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                      {medication.instructions ? (
+                        <span className="block text-xs text-text-tertiary">
+                          {medication.instructions}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
               </li>
             ))}
           </ul>

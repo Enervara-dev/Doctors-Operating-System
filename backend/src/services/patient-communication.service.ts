@@ -6,11 +6,7 @@ import type {
   PatientVisibleInvestigation,
   PatientVisibleMedication,
 } from "../domain/types";
-import { ApiError } from "../lib/api-error";
-import { simulateLatency } from "../lib/delay";
 import { createId } from "../lib/id";
-import { consultationRecordRepository } from "../repositories/consultation-record.repository";
-import { patientCommunicationRepository } from "../repositories/patient-communication.repository";
 
 /**
  * Projects a finalized record into the patient-facing payload.
@@ -118,24 +114,16 @@ function project(record: ConsultationRecord): PatientCommunicationPayload {
 }
 
 export const patientCommunicationService = {
-  /** Called inside the finalization transaction. */
-  async generateForRecord(record: ConsultationRecord): Promise<PatientCommunicationPayload> {
-    return patientCommunicationRepository.save(project(record));
-  },
-
-  async getForRecord(recordId: string): Promise<PatientCommunicationPayload> {
-    await simulateLatency();
-
-    const stored = await patientCommunicationRepository.findByRecordId(recordId);
-    if (stored) return stored;
-
-    // Seeded records predate this process, so project on demand. The result is
-    // identical — the payload is a pure function of the record.
-    const record = await consultationRecordRepository.findById(recordId);
-    if (!record) {
-      throw ApiError.notFound("RECORD_NOT_FOUND", "This consultation record could not be found.");
-    }
-    return patientCommunicationRepository.save(project(record));
+  /**
+   * The patient-facing projection of a finalized record.
+   *
+   * Computed on read rather than stored. The payload is a pure function of the
+   * record — a strict field-by-field whitelist — so persisting it would be a
+   * second copy of clinical content that could only ever drift from the
+   * record it describes. Nothing is transmitted anywhere by reading it.
+   */
+  getForRecord(record: ConsultationRecord): PatientCommunicationPayload {
+    return project(record);
   },
 
   /** Exposed for tests that assert the boundary directly. */

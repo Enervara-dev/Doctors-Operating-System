@@ -6,8 +6,11 @@ import { appointmentService } from "../services/appointment.service";
 
 export const appointmentController = {
   async list(req: Request, res: Response): Promise<void> {
-    const doctor = getAuthenticatedDoctor(req);
-    sendSuccess(res, await appointmentService.getBoard(doctor.id));
+    // Asserts the session before reading. The board itself is scoped upstream
+    // to the authenticated clinician, so no doctor id is passed down — a
+    // caller cannot ask for someone else's schedule by supplying one.
+    getAuthenticatedDoctor(req);
+    sendSuccess(res, await appointmentService.getBoard());
   },
 
   async getById(req: Request, res: Response): Promise<void> {

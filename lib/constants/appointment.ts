@@ -17,19 +17,24 @@ interface StatusMeta {
 }
 
 export const APPOINTMENT_STATUS_META: Record<AppointmentStatus, StatusMeta> = {
-  UPCOMING: { label: "Upcoming", tone: "neutral" },
-  READY: { label: "Ready for consultation", tone: "primary" },
-  IN_PROGRESS: { label: "In progress", tone: "info" },
+  REQUESTED: { label: "Awaiting confirmation", tone: "neutral" },
+  CONFIRMED: { label: "Confirmed", tone: "neutral" },
+  // The patient is here. This is what a clinician means by "ready".
+  CHECKED_IN: { label: "Ready for consultation", tone: "primary" },
+  IN_CONSULTATION: { label: "In consultation", tone: "info" },
   COMPLETED: { label: "Completed", tone: "success" },
+  FOLLOW_UP_DUE: { label: "Follow-up due", tone: "warning" },
+  RESCHEDULED: { label: "Rescheduled", tone: "neutral" },
   CANCELLED: { label: "Cancelled", tone: "neutral" },
   NO_SHOW: { label: "No-show", tone: "warning" },
 };
 
 /** Statuses the doctor can still act on — drives the primary card action. */
 export const ACTIONABLE_STATUSES: ReadonlySet<AppointmentStatus> = new Set([
-  "READY",
-  "IN_PROGRESS",
-  "UPCOMING",
+  "CHECKED_IN",
+  "IN_CONSULTATION",
+  "CONFIRMED",
+  "REQUESTED",
 ]);
 
 export const ALERT_SEVERITY_TONE: Record<AppointmentAlertSeverity, Tone> = {
