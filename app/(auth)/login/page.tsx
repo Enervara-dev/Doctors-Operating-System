@@ -6,6 +6,22 @@ import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 
 export const metadata: Metadata = { title: "Sign in" };
 
+/**
+ * Demo credentials, shown only when a deployment sets them.
+ *
+ * These used to be hardcoded, and drifted the moment authentication moved to
+ * the patient platform: the page went on advertising an account that no longer
+ * existed, so every demo login failed with "invalid credentials" while the
+ * screen insisted the credentials were right. Reading them from config means
+ * the hint is either true or absent, and a production deploy that sets neither
+ * renders nothing at all.
+ *
+ * Baked in at build time, like every NEXT_PUBLIC_ value — changing them needs
+ * a rebuild, not just a restart.
+ */
+const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL;
+const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD;
+
 export default function LoginPage() {
   return (
     <GuestGuard>
@@ -29,20 +45,22 @@ export default function LoginPage() {
               <CardContent>
                 <LoginForm />
 
-                <div className="mt-6 rounded-control border border-dashed border-border-default bg-surface-subtle px-4 py-3">
-                  <p className="text-eyebrow text-text-tertiary">Phase 1 demo account</p>
-                  <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-                    <dt className="text-text-secondary">Email</dt>
-                    <dd className="font-mono text-text">doctor@enervara.com</dd>
-                    <dt className="text-text-secondary">Password</dt>
-                    <dd className="font-mono text-text">password123</dd>
-                  </dl>
-                </div>
+                {demoEmail && demoPassword ? (
+                  <div className="mt-6 rounded-control border border-dashed border-border-default bg-surface-subtle px-4 py-3">
+                    <p className="text-eyebrow text-text-tertiary">Demo account</p>
+                    <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                      <dt className="text-text-secondary">Email</dt>
+                      <dd className="font-mono break-all text-text">{demoEmail}</dd>
+                      <dt className="text-text-secondary">Password</dt>
+                      <dd className="font-mono break-all text-text">{demoPassword}</dd>
+                    </dl>
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
 
             <p className="mt-6 text-center text-xs text-text-tertiary">
-              Authentication is mocked in this build. No patient data is transmitted.
+              Authorised clinicians only. Access to a patient record is logged.
             </p>
           </div>
         </div>
