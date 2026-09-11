@@ -24,6 +24,26 @@ function join(remote: RemoteBoard["today"]): AppointmentWithPatient[] {
 }
 
 export const appointmentRepository = {
+  /**
+   * Moves an appointment to a new lifecycle state.
+   *
+   * The legal transitions, the audit entry and the patient notification all
+   * live on the platform — this forwards the request and returns what came
+   * back. Duplicating the transition table here is how the two services would
+   * come to disagree about what a doctor is allowed to do.
+   */
+  async setStatus(
+    appointmentId: string,
+    status: string,
+    reason: string | null,
+  ): Promise<Appointment> {
+    const { appointment } = await patientApi.post<{ appointment: RemoteBoard["today"][number] }>(
+      `/api/doctor/appointments/${encodeURIComponent(appointmentId)}/status`,
+      { status, reason },
+    );
+    return toAppointment(appointment);
+  },
+
   async getBoard(): Promise<AppointmentBoard> {
     const remote = await board();
     return {

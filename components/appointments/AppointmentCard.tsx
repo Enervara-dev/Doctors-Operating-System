@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Clock } from "lucide-react";
+import { ArrowRight, Check, Clock } from "lucide-react";
 import { AppointmentAlerts } from "./AppointmentAlerts";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
@@ -15,13 +15,15 @@ const ACTION_LABELS: Partial<Record<AppointmentStatus, string>> = {
   CHECKED_IN: "Start consultation",
   IN_CONSULTATION: "Resume",
   CONFIRMED: "Open patient",
-  REQUESTED: "Open patient",
 };
 
 export interface AppointmentCardProps {
   appointment: AppointmentWithPatient;
   onOpen: (appointmentId: string) => void;
+  /** Accepts a patient's booking request. */
+  onConfirm: (appointmentId: string) => void;
   isPending?: boolean;
+  isConfirming?: boolean;
   /** Adds the day to the time meta — used outside the "Today" section. */
   showDate?: boolean;
 }
@@ -29,12 +31,24 @@ export interface AppointmentCardProps {
 export function AppointmentCard({
   appointment,
   onOpen,
+  onConfirm,
   isPending = false,
+  isConfirming = false,
   showDate = false,
 }: AppointmentCardProps) {
   const { patient, status } = appointment;
   const statusMeta = APPOINTMENT_STATUS_META[status];
-  const actionLabel = ACTIONABLE_STATUSES.has(status) ? ACTION_LABELS[status] : undefined;
+
+  /**
+   * A requested appointment cannot be attended — the platform refuses to open
+   * a consultation against one. Offering "Open patient" here sent the doctor
+   * into a dead end that reported the appointment "cannot be attended" with
+   * nothing on screen able to change that. Accepting the request is the action
+   * that actually exists at this point.
+   */
+  const needsConfirmation = status === "REQUESTED";
+  const actionLabel =
+    !needsConfirmation && ACTIONABLE_STATUSES.has(status) ? ACTION_LABELS[status] : undefined;
 
   return (
     <Card className="transition-shadow hover:shadow-raised">
@@ -85,7 +99,20 @@ export function AppointmentCard({
           <AppointmentAlerts alerts={appointment.alerts} />
         </div>
 
-        {actionLabel ? (
+        {needsConfirmation ? (
+          <div className="shrink-0 sm:self-center">
+            <Button
+              variant="primary"
+              size="sm"
+              fullWidth
+              isLoading={isConfirming}
+              onClick={() => onConfirm(appointment.id)}
+            >
+              Confirm
+              {!isConfirming ? <Check aria-hidden className="size-4" /> : null}
+            </Button>
+          </div>
+        ) : actionLabel ? (
           <div className="shrink-0 sm:self-center">
             <Button
               variant={status === "CHECKED_IN" ? "primary" : "secondary"}

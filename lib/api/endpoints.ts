@@ -9,6 +9,7 @@ export const endpoints = {
   appointments: {
     list: "/appointments",
     byId: (id: string) => `/appointments/${encodeURIComponent(id)}`,
+    confirm: (id: string) => `/appointments/${encodeURIComponent(id)}/confirm`,
   },
   patients: {
     context: (id: string) => `/patients/${encodeURIComponent(id)}/context`,

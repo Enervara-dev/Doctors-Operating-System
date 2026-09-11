@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { AppointmentCard } from "./AppointmentCard";
 import { AppointmentListSkeleton } from "./AppointmentCardSkeleton";
@@ -8,6 +9,7 @@ import { Alert } from "@/components/ui/Alert";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { useAppointmentStore } from "@/stores/appointment.store";
 import { usePatientStore } from "@/stores/patient.store";
 import type { AppointmentWithPatient } from "@/types";
 import type { RequestFailure } from "@/lib/api/failure";
@@ -43,6 +45,18 @@ export function AppointmentSection({
 }: AppointmentSectionProps) {
   const { openAppointment, pendingAppointmentId } = useAppointmentAccess();
   const accessFailure = usePatientStore((state) => state.failure);
+  const confirmAppointment = useAppointmentStore((state) => state.confirmAppointment);
+  const boardFailure = useAppointmentStore((state) => state.failure);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+
+  const confirm = useCallback(
+    async (appointmentId: string) => {
+      setConfirmingId(appointmentId);
+      await confirmAppointment(appointmentId);
+      setConfirmingId(null);
+    },
+    [confirmAppointment],
+  );
 
   const isLoading = status === "loading" || status === "idle";
 
@@ -51,6 +65,9 @@ export function AppointmentSection({
       <SectionHeading title={title} count={isLoading ? undefined : appointments.length} />
 
       {accessFailure ? <Alert tone="error" title={accessFailure.message} /> : null}
+      {status === "ready" && boardFailure ? (
+        <Alert tone="error" title={boardFailure.message} />
+      ) : null}
 
       {isLoading ? <AppointmentListSkeleton count={skeletonCount} /> : null}
 
@@ -73,7 +90,9 @@ export function AppointmentSection({
               <AppointmentCard
                 appointment={appointment}
                 onOpen={openAppointment}
+                onConfirm={confirm}
                 isPending={pendingAppointmentId === appointment.id}
+                isConfirming={confirmingId === appointment.id}
                 showDate={showDate}
               />
             </li>

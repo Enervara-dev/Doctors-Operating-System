@@ -14,6 +14,7 @@ interface AppointmentState {
   selectedAppointmentId: string | null;
 
   loadBoard: (options?: { force?: boolean }) => Promise<void>;
+  confirmAppointment: (appointmentId: string) => Promise<boolean>;
   selectAppointment: (appointmentId: string | null) => void;
   reset: () => void;
 }
@@ -35,6 +36,25 @@ export const useAppointmentStore = create<AppointmentState>()((set, get) => ({
       set({ board: await appointmentsApi.getBoard(), status: "ready", failure: null });
     } catch (error) {
       set({ status: "error", failure: toRequestFailure(error) });
+    }
+  },
+
+  /**
+   * Accepts a patient's booking request.
+   *
+   * Reloads the board rather than patching the row in place: confirming can
+   * move an appointment between the today / upcoming buckets and changes the
+   * section counts, so a local edit would leave the page subtly wrong.
+   */
+  async confirmAppointment(appointmentId) {
+    set({ failure: null });
+    try {
+      await appointmentsApi.confirm(appointmentId);
+      await get().loadBoard({ force: true });
+      return true;
+    } catch (error) {
+      set({ failure: toRequestFailure(error) });
+      return false;
     }
   },
 

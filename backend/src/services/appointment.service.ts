@@ -1,4 +1,4 @@
-import type { AppointmentBoard, AppointmentWithPatient } from "../domain/types";
+import type { Appointment, AppointmentBoard, AppointmentWithPatient } from "../domain/types";
 import { ApiError } from "../lib/api-error";
 import { appointmentRepository } from "../repositories/appointment.repository";
 
@@ -14,6 +14,18 @@ import { appointmentRepository } from "../repositories/appointment.repository";
 export const appointmentService = {
   async getBoard(): Promise<AppointmentBoard> {
     return appointmentRepository.getBoard();
+  },
+
+  /**
+   * Confirms a requested appointment.
+   *
+   * A patient booking arrives as REQUESTED, and REQUESTED is not attendable —
+   * so without this the doctor could see the appointment, press "Open patient"
+   * and be told it "cannot be attended", with nothing anywhere to change that.
+   * Confirming is the doctor accepting the request.
+   */
+  async confirm(appointmentId: string): Promise<Appointment> {
+    return appointmentRepository.setStatus(appointmentId, "CONFIRMED", null);
   },
 
   async getById(appointmentId: string): Promise<AppointmentWithPatient> {

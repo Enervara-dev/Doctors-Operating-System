@@ -17,4 +17,17 @@ export const appointmentController = {
     const id = requireParam(req, "id", "An appointment id is required.");
     sendSuccess(res, await appointmentService.getById(id));
   },
+
+  /**
+   * Accepts a patient's booking request.
+   *
+   * Deliberately not a general "set any status" endpoint: this service exposes
+   * the one transition the dashboard actually offers, so a malformed or
+   * unexpected state can never be forwarded upstream.
+   */
+  async confirm(req: Request, res: Response): Promise<void> {
+    getAuthenticatedDoctor(req);
+    const id = requireParam(req, "id", "An appointment id is required.");
+    sendSuccess(res, await appointmentService.confirm(id));
+  },
 };
