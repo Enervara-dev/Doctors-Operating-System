@@ -1,7 +1,9 @@
-import type { AuthSession, Doctor, LoginCredentials } from "../domain/types";
+import type { AuthSession, ChangePasswordInput, Doctor, LoginCredentials } from "../domain/types";
 import { ApiError } from "../lib/api-error";
 import { doctorRepository } from "../repositories/doctor.repository";
 import { withSession } from "../lib/patient-api";
+
+const MIN_PASSWORD_LENGTH = 12;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -60,5 +62,27 @@ export const authService = {
         throw error;
       }
     });
+  },
+
+  /**
+   * Shape validation only — the current-password check and the actual hash
+   * rotation happen on the patient platform, the one place that holds the
+   * credential. Enforcing a minimum length here as well as there means a
+   * bad request fails before a network round trip.
+   */
+  async changePassword(input: Partial<ChangePasswordInput>): Promise<void> {
+    const currentPassword = input.currentPassword ?? "";
+    const newPassword = input.newPassword ?? "";
+    const details: Record<string, string> = {};
+
+    if (!currentPassword) details.currentPassword = "Your current password is required.";
+    if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
+      details.newPassword = `Choose a password of at least ${MIN_PASSWORD_LENGTH} characters.`;
+    }
+    if (Object.keys(details).length > 0) {
+      throw ApiError.validation("Please correct the highlighted fields.", details);
+    }
+
+    await doctorRepository.changePassword({ currentPassword, newPassword });
   },
 };

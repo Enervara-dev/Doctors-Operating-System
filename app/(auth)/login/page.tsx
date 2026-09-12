@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { BrandMark } from "@/components/layout/BrandMark";
 import { GuestGuard } from "@/components/layout/GuestGuard";
@@ -61,6 +62,16 @@ export default function LoginPage() {
 
             <p className="mt-6 text-center text-xs text-text-tertiary">
               Authorised clinicians only. Access to a patient record is logged.
+            </p>
+            <p className="mt-2 text-center text-xs text-text-tertiary">
+              Not registered yet?{" "}
+              <Link href="/register" className="underline">
+                Apply as a doctor
+              </Link>
+              {" · "}
+              <Link href="/application-status" className="underline">
+                Check application status
+              </Link>
             </p>
           </div>
         </div>

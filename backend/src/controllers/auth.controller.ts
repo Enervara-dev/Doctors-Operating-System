@@ -21,4 +21,9 @@ export const authController = {
   async me(req: Request, res: Response): Promise<void> {
     sendSuccess(res, getAuthenticatedDoctor(req));
   },
+
+  async changePassword(req: Request, res: Response): Promise<void> {
+    await authService.changePassword(req.body ?? {});
+    sendSuccess(res, { changed: true });
+  },
 };

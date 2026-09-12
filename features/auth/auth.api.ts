@@ -1,6 +1,6 @@
 import { apiRequest } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
-import type { AuthSession, LoginCredentials } from "@/types";
+import type { AuthSession, ChangePasswordInput, LoginCredentials } from "@/types";
 
 export const authApi = {
   login(credentials: LoginCredentials): Promise<AuthSession> {
@@ -8,6 +8,13 @@ export const authApi = {
       method: "POST",
       body: credentials,
       anonymous: true,
+    });
+  },
+
+  changePassword(input: ChangePasswordInput): Promise<void> {
+    return apiRequest<void>(endpoints.auth.changePassword, {
+      method: "POST",
+      body: input,
     });
   },
 };

@@ -1,4 +1,4 @@
-import type { AuthSession, Doctor } from "../domain/types";
+import type { AuthSession, ChangePasswordInput, Doctor } from "../domain/types";
 import { patientApi } from "../lib/patient-api";
 
 /**
@@ -53,16 +53,32 @@ export const doctorRepository = {
 
   /** Anonymous by definition — this is the call that establishes the session. */
   async login(email: string, password: string): Promise<AuthSession> {
-    const body = await patientApi.post<{ doctor: RemoteDoctor; token: string; issuedAt: string }>(
-      "/api/doctor/auth/login",
-      { email, password },
-      { anonymous: true },
-    );
-    return { doctor: toDoctor(body.doctor), token: body.token, issuedAt: body.issuedAt };
+    const body = await patientApi.post<{
+      doctor: RemoteDoctor;
+      token: string;
+      issuedAt: string;
+      mustChangePassword: boolean;
+    }>("/api/doctor/auth/login", { email, password }, { anonymous: true });
+    return {
+      doctor: toDoctor(body.doctor),
+      token: body.token,
+      issuedAt: body.issuedAt,
+      mustChangePassword: body.mustChangePassword,
+    };
   },
 
   async me(): Promise<Doctor> {
     const { doctor } = await patientApi.getOnce<{ doctor: RemoteDoctor }>("/api/doctor/auth/me");
     return toDoctor(doctor);
+  },
+
+  /**
+   * Changes the signed-in doctor's password — the one call reachable while
+   * `must_change_password` is still true on the patient platform (alongside
+   * `me()` above). No DB, no hashing here: the password never touches this
+   * process beyond forwarding it once, same as `login`.
+   */
+  async changePassword(input: ChangePasswordInput): Promise<void> {
+    await patientApi.post<undefined>("/api/doctor/auth/change-password", input);
   },
 };

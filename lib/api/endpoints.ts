@@ -5,6 +5,7 @@ export const endpoints = {
   auth: {
     login: "/auth/login",
     me: "/auth/me",
+    changePassword: "/auth/change-password",
   },
   appointments: {
     list: "/appointments",

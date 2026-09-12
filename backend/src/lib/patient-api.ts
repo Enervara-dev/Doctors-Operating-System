@@ -90,6 +90,13 @@ const PASSTHROUGH_CODES = new Set<string>([
   "CONSULTATION_NOT_FOUND",
   "ACCESS_CODE_INVALID",
   "CONSULTATION_FINALIZED",
+  // Forced first-login password change (see requirePasswordChange.middleware.ts
+  // on the patient platform) and the account-lifecycle states an admin can put
+  // a doctor account into.
+  "PASSWORD_CHANGE_REQUIRED",
+  "ACCOUNT_DISABLED",
+  "ACCOUNT_SUSPENDED",
+  "ACCOUNT_DEACTIVATED",
 ]);
 
 function normaliseError(status: number, body: RemoteError): ApiError {
