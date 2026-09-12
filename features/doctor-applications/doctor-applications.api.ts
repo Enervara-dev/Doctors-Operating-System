@@ -96,9 +96,29 @@ function toFormData(input: DoctorApplicationSubmission): FormData {
   return form;
 }
 
+/**
+ * A `fetch()` that never resolved to a Response — refused by CORS, DNS
+ * failure, offline — throws a raw `TypeError` before `parse()` ever sees it.
+ * Surfaced as `DoctorApplicationRequestError` too, so the UI shows an actual
+ * reason instead of falling through to a generic catch-all.
+ */
+async function fetchWithDiagnostics(input: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (error) {
+    throw new DoctorApplicationRequestError({
+      code: "INTERNAL_ERROR",
+      message:
+        "Could not reach the registration service. This is usually a server-side configuration " +
+        "issue (e.g. the origin isn't allowed yet) rather than something wrong with your submission — " +
+        `contact support if it persists. (${error instanceof Error ? error.message : "network error"})`,
+    });
+  }
+}
+
 export const doctorApplicationsApi = {
   async submit(input: DoctorApplicationSubmission): Promise<DoctorApplicationStatus> {
-    const response = await fetch(`${baseUrl()}/api/doctor-applications`, {
+    const response = await fetchWithDiagnostics(`${baseUrl()}/api/doctor-applications`, {
       method: "POST",
       body: toFormData(input),
     });
@@ -107,7 +127,7 @@ export const doctorApplicationsApi = {
   },
 
   async getStatus(applicationId: string): Promise<{ application: DoctorApplicationStatus; reason: string | null }> {
-    const response = await fetch(
+    const response = await fetchWithDiagnostics(
       `${baseUrl()}/api/doctor-applications/${encodeURIComponent(applicationId)}/status`,
     );
     return parse(response);
@@ -116,7 +136,7 @@ export const doctorApplicationsApi = {
   async resubmit(applicationId: string, certificate: File): Promise<DoctorApplicationStatus> {
     const form = new FormData();
     form.set("certificate", certificate);
-    const response = await fetch(
+    const response = await fetchWithDiagnostics(
       `${baseUrl()}/api/doctor-applications/${encodeURIComponent(applicationId)}/resubmit`,
       { method: "POST", body: form },
     );
